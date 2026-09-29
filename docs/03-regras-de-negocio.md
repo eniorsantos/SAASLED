@@ -1,0 +1,115 @@
+# 03 — Regras de negócio (spec §3, §4.1, §4.3, §8.2, §9.1)
+
+Código puro e testável em `backend/src/regras.js` (sem I/O).
+
+## 3.1 Status de campanha (spec §3)
+
+`statusCampanha(c, cfg, hoje)` — `hoje` = `HOJE` ou `2026-10-25`:
+
+| Status        | Regra                                                        |
+|---------------|--------------------------------------------------------------|
+| `vencida`     | `hoje − fim ≥ 2`, ou seja, **só 1 dia depois do fim** (no dia seguinte ao fim ainda conta como `a_vencer`) |
+| `agendada`    | futura (`reservada=1` ou `inicio > hoje`) e `inicio−hoje ≤ N_início` (7) |
+| `reservada`   | futura além de N_início                                      |
+| `a_vencer`    | veiculando e `fim−hoje ≤ N_vencimento` (5, incluindo −1 = dia de carência) |
+| `veiculando`  | `hoje ∈ [início, fim]`, fora da janela de vencimento         |
+| `livre`       | só existe no front (LED/período sem campanha)                |
+
+Os limites N vivem na tabela `config` e são editáveis pelo admin via
+`PUT /api/config` (spec: "configuráveis por cliente ou globalmente" —
+hoje global).
+
+## 3.2 Ocupação (spec §4.3 + §8.2)
+
+`ocupacao(campanhas, pIni, pFim)` = dias distintos cobertos ÷ dias totais do
+período (usa `Set`, então campanhas sobrepostas no mesmo LED não contam dobro).
+O dashboard calcula por LED no período Out-2026 e tira a média; o KPI
+"A vencer" conta `fim−hoje ∈ [−1, 7]` (inclui a carência).
+
+## 3.3 Notificações toast (spec §4.1)
+
+`varreduraNotificacoes(db)` gera, por campanha:
+
+- `vencimento`: `0 ≤ fim−hoje ≤ N_vencimento` e já iniciada;
+- `inicio`: `0 ≤ inicio−hoje ≤ N_início` e ainda futura.
+
+Anti-duplicidade: `UNIQUE(campanha_id, evento, dia)` — 1 toast por
+campanha/evento/dia; o `INSERT` duplicado é silenciosamente ignorado.
+**Agrupamento**: campanhas com **mesmo anunciante + mesma data de início**
+saem num único toast (corpo lista os LEDs + contagem de painéis; id sintético
+`grupo:<evento>:<anunciante>:<data>` mantém o dedupe por grupo/dia). Vale para
+vencimento (agrupa por anunciante+início, detalhando cada fim), início e
+reservas. Anunciante é **normalizado** (trim + espaços) na escrita e na chave,
+para `Dup X` e `Dup X  ` agruparem.
+**Poda de órfãs**: no boot (e no job), `podarNotificacoesOrfas()` apaga
+notificações de campanhas/reservas que não existem mais — sem isso, toasts de
+registros excluídos reapareceriam para sempre, furando o agrupamento.
+Disparo: job a cada 24h + 1 execução no boot; front faz polling 30s em
+`GET /api/notificacoes` e exibe toast **em todo login/refresh**, não-bloqueante,
+**arrastável pelo título**, com **Ver campanha** e **Fechar** — fechar dispensa
+só na sessão (volta no próximo login/refresh); leitura definitiva
+("Marcar como lida") é na central (sininho).
+
+## 3.4 Grade compartilhada + autorização admin (§9.1, feature)
+
+Duas campanhas podem dividir a **mesma grade** (mesmo LED + dia) desde que os
+intervalos `[horario_inicio, +duracao_segundos]` **não se intersectem**
+(`intervalosSobrepostos`); `dias_semana` aceita lista (`SEG,QUA`) e o choque
+exige dia em comum.
+
+Com choque, `POST /api/programacoes` responde:
+
+| Quem   | Sem `autorizacao_admin` | Com `autorizacao_admin: true` + motivo |
+|--------|-------------------------|----------------------------------------|
+| admin  | `409` + `requer_autorizacao_admin: true` + detalhe do choque | `201`, salva com `autorizado_por=<login>` |
+| demais | `403` ("exige autorização de um usuário admin") | `403` (flag ignorada) |
+
+Toda autorização gera `programacao.create.autorizada` na auditoria; o front
+exibia `🔓 admin` na linha do spot (grade removida do painel na Rodada 4; API
+mantida).
+
+## 3.5 Capacidade: 8 espaços de cliente por LED
+
+Cada LED tem `max_clientes_por_led` espaços (padrão 8, em `config`, editável
+pelo admin). Um espaço = um **anunciante distinto com campanha não-vencida**
+(`fim >= hoje`) no LED (`espacosUsados()`).
+
+- `POST /api/campanhas` e `PUT /api/campanhas/:id` (ao trocar LED/anunciante):
+  anunciante novo em LED com `usados >= max` → `409` com
+  `{erro, espacos: {usados, total}}`. Renovar o mesmo anunciante no mesmo LED
+  nunca é bloqueado.
+- `GET /api/leds` e o Gantt do dashboard expõem `espacos_usados/espacos_total`.
+- LEDs com campanhas não podem ser excluídos (`409`); renomear (`novo_codigo`)
+  move campanhas e spots juntos numa transação.
+
+## 3.6 Exportação (spec §8.3)
+
+Exporta **exatamente a view atual**: `GET /api/export/planilha.{csv,xlsx}`
+aceita os mesmos `?cidades=&status=&q=` de `GET /api/planilha` (colunas
+Cidade, LED, Anunciante, Início, Fim, Status). PDF = impressão da página;
+PNG por gráfico = evolução futura (§8.4).
+
+## 3.7 Importação de planilha (mesmo padrão da exportação)
+
+`POST /api/import/planilha` recebe `{csv}` com cabeçalho
+`Cidade;LED;Anunciante;Início;Fim[;Reservada]` **mais pares opcionais
+`ReservaN_Anunciante;ReservaN_Início;ReservaN_Fim` (N = 1, 2, 3…)** — cada par
+vira uma reserva da campanha da linha, com seu anunciante (vazio = o da
+linha), validada como na §3.8; conflito vira item ignorado, sem
+abortar a campanha. (`;` ou `,`; datas `DD/MM/AA`, `DD/MM/AAAA` ou ISO;
+`Reservada` aceita 1/sim; cabeçalhos sem acento funcionam.) Cidade por nome ou
+id, LED precisa existir, anunciante é criado se novo, `Status` é sempre
+recalculado (coluna ignorada). Cada linha vira criada ou ignorada com motivo
+(LED inexistente, data inválida, duplicada, LED lotado) —
+`{total, criadas, reservas_criadas, ignoradas[], ids[]}`.
+Modelo em `GET /api/import/modelo.csv` (com exemplo de Reserva1).
+
+## 3.8 Reservas múltiplas por campanha
+
+Cada campanha aceita N períodos futuros (`reservas`), cada um com **seu
+anunciante** (vazio = o da campanha; toast e `A INICIAR` usam o da reserva):
+datas válidas, `inicio <= fim`, sem interseção com o período da própria
+campanha nem entre reservas irmãs (`409` com detalhe). Cada reserva com
+`0 ≤ inicio−hoje ≤ N_início` gera **seu próprio toast** `🔔 Reserva próxima`
+na varredura (dedupe por reserva/dia via id da reserva); reservas próximas
+também entram em `a_iniciar_lista` do dashboard.

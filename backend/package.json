@@ -1,0 +1,20 @@
+{
+  "name": "saas-leds-backend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Back-end SaaS Controle de Veiculacao LED — spec-saas-controle-leds (REST + SQLite + jobs + JWT)",
+  "type": "commonjs",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node src/index.js",
+    "test": "node test/smoke.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.3.0",
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "jsonwebtoken": "^9.0.2",
+    "xlsx": "^0.18.5"
+  }
+}
