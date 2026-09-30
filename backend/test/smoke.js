@@ -1,4 +1,7 @@
-﻿// Smoke test: sobe a API em memória e valida os contratos da spec.
+﻿// Smoke relativo ao período do seed: fixa o "hoje" em Out-2026
+// (produção usa a data real; ver HOJE em docs/01)
+process.env.HOJE = '2026-10-25';
+// Smoke test: sobe a API em memória e valida os contratos da spec.
 const assert = require('assert');
 const app = require('../src/index');
 const server = app.listen(0, async () => {
@@ -74,12 +77,12 @@ const server = app.listen(0, async () => {
       method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + login.token },
       body: JSON.stringify(body),
     }).then(async (r) => ({ status: r.status, json: await r.json().catch(() => ({})) }));
-    // vencida só 1 dia depois do fim: fim=ontem → a_vencer; fim=anteontem → vencida
-    await postCamp({ id: 'cap-g1', cidade_id: 'aracaju', led_codigo: 'AJU 03', anunciante: 'Grace 1', inicio: '2026-10-01', fim: '2026-10-24' });
-    await postCamp({ id: 'cap-g2', cidade_id: 'aracaju', led_codigo: 'AJU 03', anunciante: 'Grace 2', inicio: '2026-10-01', fim: '2026-10-23' });
+    // vencida passou do último dia: fim=hoje ainda vale; fim=ontem vencida
+    await postCamp({ id: 'cap-g1', cidade_id: 'aracaju', led_codigo: 'AJU 03', anunciante: 'Grace 1', inicio: '2026-10-01', fim: '2026-10-25' });
+    await postCamp({ id: 'cap-g2', cidade_id: 'aracaju', led_codigo: 'AJU 03', anunciante: 'Grace 2', inicio: '2026-10-01', fim: '2026-10-24' });
     const todas = await get('/api/campanhas');
-    assert.equal(todas.find((c) => c.id === 'cap-g1').status, 'a_vencer', 'dia seguinte ao fim ainda não é vencida');
-    assert.equal(todas.find((c) => c.id === 'cap-g2').status, 'vencida', 'dois dias após o fim é vencida');
+    assert.equal(todas.find((c) => c.id === 'cap-g1').status, 'a_vencer', 'no último dia ainda não é vencida');
+    assert.equal(todas.find((c) => c.id === 'cap-g2').status, 'vencida', 'passou do último dia é vencida');
     // capacidade: 8 espaços de cliente por LED
     // AJU 02 tem 1 anunciante ativo (Vita) → completa até 8
     for (let i = 1; i <= 7; i++) {
@@ -161,6 +164,8 @@ const server = app.listen(0, async () => {
     const grupo = (await get('/api/notificacoes')).filter((n) => n.corpo.includes('Grupo X'));
     assert.equal(grupo.length, 1, '1 toast para o grupo');
     assert.ok(grupo[0].corpo.includes('TST G1') && grupo[0].corpo.includes('TST G2'), 'toast lista os LEDs');
+    assert.equal(grupo[0].anunciante, 'Grupo X', 'toast leva o anunciante p/ Ver campanha');
+    assert.ok(grupo[0].campanha_ref, 'toast referencia a campanha');
     assert.equal(grupo[0].cidade_id, 'salvador', 'toast carrega a cidade (escopo da central)');
     const regTokEscopo = (await (await fetch(base + '/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ login: 'regional', senha: 'reg123' }) })).json()).token;
     // escopo de leitura: LEDs, reservas aninhadas e central respeitam o vínculo

@@ -7,7 +7,8 @@ cd backend; npm test
 ```
 
 Sobe a API em porta efêmera contra o banco local e valida os contratos da
-spec, **limpando os dados de teste no `finally`**. Rode **sempre** num banco
+spec, **limpando os dados de teste no `finally`**. Fixa `HOJE=2026-10-25`
+(relativo ao seed; produção usa a data real). Rode **sempre** num banco
 isolado (o smoke cria/exclui dados e exige o seed intacto):
 
 ```powershell
@@ -28,7 +29,7 @@ $env:DB_PATH = '.\test-smoke.db'; npm test; Remove-Item .\test-smoke.db
     (Rede Primavera em iniciar);
 11. importação: 2 válidas + 2 reservas (rotação) criadas; 3 ignoradas
     (LED inexistente, duplicada, data inválida); modelo com colunas de reserva;
-12. carência de vencimento: fim=ontem → `a_vencer`; fim=anteontem → `vencida`;
+12. vencida passou do último dia: fim=hoje → `a_vencer`; fim=ontem → `vencida`;
 13. acesso por usuário: `/api/me` do admin, criar `teste` (visualizador +
     aracaju + `exportar`), login dele, vínculo respeitado (salvador vazia),
     escrita sem `campanhas_editar` → 403, auto-exclusão `409`, exclusão OK;
@@ -37,7 +38,8 @@ $env:DB_PATH = '.\test-smoke.db'; npm test; Remove-Item .\test-smoke.db
 15. menu de reservas: lista global com cidade, criar, editar (PUT com novo
     anunciante + filtro `?led=`), excluir; viewer sem `reservas` → 403;
 16. agrupamento de toasts: 2 LEDs com mesmo anunciante+início → 1 toast
-    listando ambos; `Dup X`/`Dup X  ` → 1 toast (normalização);
+    listando ambos, com `anunciante` + `campanha_ref` (Ver campanha);
+    `Dup X`/`Dup X  ` → 1 toast (normalização);
 17. escopo de escrita: regional não cria/altera/exclui fora do vínculo (403),
     cidade≠cidade do LED → 400;
 18. filtro de cidade fim-a-fim: ocupação calculada por cidade (Salvador vazia

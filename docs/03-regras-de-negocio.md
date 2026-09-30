@@ -4,14 +4,14 @@ Código puro e testável em `backend/src/regras.js` (sem I/O).
 
 ## 3.1 Status de campanha (spec §3)
 
-`statusCampanha(c, cfg, hoje)` — `hoje` = `HOJE` ou `2026-10-25`:
+`statusCampanha(c, cfg, hoje)` — `hoje` = data real (`HOJE` só p/ simular):
 
 | Status        | Regra                                                        |
 |---------------|--------------------------------------------------------------|
-| `vencida`     | `hoje − fim ≥ 2`, ou seja, **só 1 dia depois do fim** (no dia seguinte ao fim ainda conta como `a_vencer`) |
+| `vencida`     | `fim < hoje`, ou seja, **passou do último dia** (no último dia ainda conta como `a_vencer`) |
 | `agendada`    | futura (`reservada=1` ou `inicio > hoje`) e `inicio−hoje ≤ N_início` (7) |
 | `reservada`   | futura além de N_início                                      |
-| `a_vencer`    | veiculando e `fim−hoje ≤ N_vencimento` (5, incluindo −1 = dia de carência) |
+| `a_vencer`    | veiculando e `0 ≤ fim−hoje ≤ N_vencimento` (5) |
 | `veiculando`  | `hoje ∈ [início, fim]`, fora da janela de vencimento         |
 | `livre`       | só existe no front (LED/período sem campanha)                |
 
@@ -23,8 +23,9 @@ hoje global).
 
 `ocupacao(campanhas, pIni, pFim)` = dias distintos cobertos ÷ dias totais do
 período (usa `Set`, então campanhas sobrepostas no mesmo LED não contam dobro).
-O dashboard calcula por LED no período Out-2026 e tira a média; o KPI
-"A vencer" conta `fim−hoje ∈ [−1, 7]` (inclui a carência).
+O dashboard calcula por LED no **mês do "hoje"** (`periodoReferencia()`) e tira
+a média; a evolução usa os **últimos 6 meses** reais; o KPI "A vencer" conta
+`fim−hoje ∈ [0, 7]`.
 
 ## 3.3 Notificações toast (spec §4.1)
 

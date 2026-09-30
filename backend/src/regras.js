@@ -32,13 +32,37 @@ function podarNotificacoesOrfas(db) {
   return apagadas;
 }
 function hojeISO() {
-  return process.env.HOJE || '2026-10-25'; // período do mockup: Out-2026
+  if (process.env.HOJE) return process.env.HOJE;
+  const d = new Date();
+  const off = d.getTimezoneOffset() * 60000;
+  return new Date(d.getTime() - off).toISOString().slice(0, 10); // data local real
+}
+const MESES_PT_LONGO = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+const MESES_PT_CURTO = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+// Período de referência = mês do "hoje" (antes era Out-2026 fixo do mockup)
+function periodoReferencia(hoje = hojeISO()) {
+  const [y, m] = hoje.split('-').map(Number);
+  const ini = `${hoje.slice(0, 7)}-01`;
+  const fimDia = new Date(y, m, 0).getDate();
+  return { ini, fim: `${hoje.slice(0, 7)}-${String(fimDia).padStart(2, '0')}`, rotulo: `${MESES_PT_LONGO[m - 1]} ${y}` };
+}
+// Últimos 6 meses até o "hoje": [{mes:'Abr', ini, fim}] p/ evolução mensal
+function ultimos6Meses(hoje = hojeISO()) {
+  const [y0, m0] = hoje.split('-').map(Number);
+  const out = [];
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(y0, m0 - 1 - i, 1);
+    const y = d.getFullYear(), m = d.getMonth() + 1;
+    const ini = `${y}-${String(m).padStart(2, '0')}-01`;
+    const fim = `${y}-${String(m).padStart(2, '0')}-${String(new Date(y, m, 0).getDate()).padStart(2, '0')}`;
+    out.push({ mes: MESES_PT_CURTO[m - 1], ini, fim });
+  }
+  return out;
 }
 // Veiculando: hoje ∈ [início, fim] · Início próximo: início−hoje ≤ N(7) ·
-// Vencimento próximo: fim−hoje ≤ N(5) · Vencida: só 1 dia DEPOIS do fim
-// (no dia seguinte ao fim ainda conta como a_vencer/"encerrou ontem") · Livre: sem campanha
+// Vencimento próximo: fim−hoje ≤ N(5) · Vencida: passou do último dia (fim < hoje) · Livre: sem campanha
 function statusCampanha(c, cfg, hoje = hojeISO()) {
-  if (diasEntre(hoje, c.fim) >= 2) return 'vencida';
+  if (c.fim < hoje) return 'vencida';
   if (Number(c.reservada) === 1 || c.inicio > hoje)
     return diasEntre(c.inicio, hoje) <= cfg.n_inicio_proximo ? 'agendada' : 'reservada';
   return diasEntre(c.fim, hoje) <= cfg.n_vencimento_proximo ? 'a_vencer' : 'veiculando';
@@ -168,4 +192,4 @@ function espacosUsados(db, ledCodigo, hoje = hojeISO(), excetoId = null) {
   if (excetoId) { sql += ' AND id != ?'; args.push(excetoId); }
   return db.prepare(sql).all(...args).map((r) => r.anunciante);
 }
-module.exports = { getConfig, hojeISO, diasEntre, normalizarAnunciante, podarNotificacoesOrfas, statusCampanha, ocupacao, validarDataISO, varreduraNotificacoes, validarHorario, horarioParaSegundos, intervalosSobrepostos, acharChoqueGrade, espacosUsados };
+module.exports = { getConfig, hojeISO, periodoReferencia, ultimos6Meses, diasEntre, normalizarAnunciante, podarNotificacoesOrfas, statusCampanha, ocupacao, validarDataISO, varreduraNotificacoes, validarHorario, horarioParaSegundos, intervalosSobrepostos, acharChoqueGrade, espacosUsados };

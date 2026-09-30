@@ -60,6 +60,8 @@ th:hover{color:var(--teal)}
 td{padding:9px 8px;border-bottom:1px solid var(--border)}
 td input{background:var(--panel2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:3px 6px;font-size:.75rem;width:100%}
 .status-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px}
+tr.destaque td{background:rgba(45,212,191,.14);animation:piscar 1s ease-in-out 3}
+@keyframes piscar{50%{background:rgba(45,212,191,.32)}}
 .toasts{position:fixed;top:16px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;gap:10px;z-index:10;width:max-content;max-width:calc(100vw - 32px);align-items:stretch}
 .toast{background:var(--panel);border:1px solid var(--border);border-left:4px solid var(--orange);border-radius:10px;padding:10px 14px;font-size:.76rem;box-shadow:0 8px 24px rgba(0,0,0,.35)}
 .toast.red{border-left-color:var(--red)}

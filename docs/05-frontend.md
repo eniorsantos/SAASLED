@@ -1,4 +1,4 @@
-# 05 — Front-end (fluxo §5 + mockup-led-saas)
+﻿# 05 — Front-end (fluxo §5 + mockup-led-saas)
 
 Vite + React 18 + Recharts 2. Código em `frontend/src/`:
 `App.tsx` (telas) · `api.ts` (HTTP + fallback) · `index.css` (paleta) · `main.tsx`.
@@ -27,14 +27,16 @@ Distribuição por status (rosca Recharts com % reais: veiculando vs. reservadas
 vs. livres) · Ocupação por cidade (barras) · A vencer (só `a_vencer`) + **A iniciar**
 (`agendada` + reservas próximas, com estados vazios próprios) ·
 Abas **Dashboard / Visualizar como planilha / Gráficos / Reservas** (rosca→linha
-e barras Recharts na aba Gráficos) · footer com latência medida do fetch.
+e barras Recharts na aba Gráficos) · footer com latência medida do fetch e
+período dinâmico.
 
 ## Comportamentos que importam
 
 - **Visibilidade por usuário** (`/api/me`): abas planilha/gráficos/reservas,
   botões LEDs/Reservas/Usuários, import/export, ações de campanha e reservas,
-  edição inline e sininho/toasts só aparecem com o recurso; aba padrão cai para
-  Dashboard se a atual for vetada.
+  edição inline e sininho/toasts só aparecem com o recurso (offline: abas
+  planilha/gráficos liberadas com dados do mockup); aba padrão cai para
+  Dashboard se a atual for vetada (com permissões carregadas).
 - **Menu 🗓️ Reservas** (recurso `reservas`, botão na topbar abre a **janela**
   como o cadastro de LEDs): **aba Reservas** e janela com o mesmo conteúdo —
   tabela global (anunciante, LED, cidade, período) + criar (campanha +
@@ -50,13 +52,16 @@ e barras Recharts na aba Gráficos) · footer com latência medida do fetch.
   coluna **Ações** (Editar, **Reservas**, Excluir); modal Reservas lista os
   períodos com o anunciante de cada um e adiciona/exclui (anunciante vazio =
   o da campanha); modal de campanha ajusta a **cidade sozinho ao trocar de
-  LED** (nunca grava cidade≠cidade do LED); status `a_vencer` mostra `Nd`,
-  `encerra hoje` ou `encerrou ontem`; **⬆ Importar**
+  LED** (nunca grava cidade≠cidade do LED); status `a_vencer` mostra `Nd` ou
+  `encerra hoje`; **⬆ Importar**
   + **Modelo** com relatório criadas/ignoradas inline. LED lotado volta `409`.
 - **Toasts de sessão**: aparecem em todo login/refresh, arrastáveis pelo título
   (⠿, com captura de ponteiro — vira flutuante ao arrastar), com Ver campanha
-  e Fechar (dispensa só local); modais de cadastro com 945px (LEDs: 1440px),
-  sempre limitados à viewport, rolagem interna e tabela com rolagem horizontal.
+  (vai à planilha, busca o anunciante e pisca a linha; extrai o nome do texto
+  se a API não mandar; sem permissão carregada não desvia de aba) e Fechar
+  (dispensa só local); sininho com Ver campanha + Marcar como lida; modais de
+  cadastro com 945px (LEDs: 1440px), sempre limitados à viewport, rolagem
+  interna e tabela com rolagem horizontal.
 - **Polling 30s** recarrega dashboard + planilha + notificações **+ cidades e
   LEDs**; respostas vazias **substituem** o estado (sem dados velhos) e filtros
   sem resultado mostram estado vazio — nunca linhas de outra cidade.

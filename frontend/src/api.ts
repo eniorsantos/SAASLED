@@ -26,7 +26,7 @@ export interface Dashboard {
   a_iniciar_lista: { anunciante: string; led: string; status: string }[];
 }
 export interface PlanilhaRow { id?: string; cidade: string; led: string; anunciante: string; inicio: string; fim: string; status: string }
-export interface Notif { id: number; titulo: string; corpo: string; lida: boolean; evento: string; campanha_id: string }
+export interface Notif { id: number; titulo: string; corpo: string; lida: boolean; evento: string; campanha_id: string; anunciante?: string; led?: string; campanha_ref?: string }
 export interface Me { login: string; perfil: string; nome: string; cidades: string[]; permissoes: string[]; efetivas: string[] }
 
 export const api = {

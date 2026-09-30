@@ -62,16 +62,13 @@ Variáveis de ambiente:
 | `PORT`         | back-end | `3001`              | porta da API                    |
 | `JWT_SECRET`   | back-end | `led-control-dev`   | assinatura dos tokens (trocar em prod) |
 | `DB_PATH`        | back-end | `backend/data.db`   | caminho do SQLite (em nuvem: apontar p/ disco persistente — doc 09) |
-| `HOJE`         | back-end | `2026-10-25`        | "hoje" lógico das regras        |
+| `HOJE`         | back-end | (data real)         | "hoje" lógico; fixe (`2026-10-25`) só p/ simular/testar |
 | `SEED`         | back-end | (ligado)            | `false` pula o seed (banco vazio gerenciado à mão; garante só o admin de resgate `admin/admin123`) |
 | `VITE_API_URL` | front    | `""` (usa proxy)    | base da API quando sem proxy    |
 
 ## Convenções importantes
 
-- **Hoje simulado = 2026-10-25** (`HOJE`, `regras.hojeISO()`). O mockup usa o
-  período **Out-2026**; sem a data simulada, todas as campanhas seed apareceriam
-  como vencidas. Para operar em produção, remover o padrão e usar a data real.
-- **Período de referência do dashboard**: `2026-10-01 → 2026-10-31` (fixo em
-  `GET /api/dashboard`; ver §8.4 de evoluções).
+- **"Hoje" = data real** (`hojeISO()`; `HOJE` só para simular). O período de
+  referência do dashboard e a evolução mensal seguem o mês do "hoje".
 - **Sem API no ar, o painel funciona offline**: `api.ts` tem `FALLBACK_DASH`
   com os valores literais do mockup (72,4%, 4/4, rosca 55/25/20 etc.).

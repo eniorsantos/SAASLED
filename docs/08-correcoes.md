@@ -191,3 +191,21 @@ ormalizarAnunciante() em todas as escritas e nas chaves de grupo (Dup X = Dup X 
 - **Rosca fixa**: donut era 55/25/20 chumbado com dados reais; agora % de veiculando/reservadas/livres (soma 100).
 - **Leituras sem escopo**: GET /api/leds, reservas aninhadas, programacoes e central ignoravam o vinculo. Agora filtram/403; notificacoes ganharam cidade_id (migracao).
 - **Smoke**: item 19.
+
+## Vencida sem carencia
+
+- Reportado que o vencido exibia errado: havia carencia de 1 dia (>= 2). Agora im < hoje = vencida (ultimo dia ainda conta); KPI volta a [0, 7]; planilha sem encerrou ontem; smoke fim=hoje/ontem.
+
+## Vencidas em massa - era a data simulada
+
+- **Causa**: HOJE fixo em 2026-10-25 com dados reais (hoje real 30/09): 148/179 campanhas marcadas vencidas. Confirmado comparando status simulado x real.
+- **Correcao**: hojeISO() usa a data real (HOJE virou override); periodo e evolucao mensal seguem o mes do hoje; smoke fixa HOJE para o seed; rodape do painel dinamico. Com data real: 47 veiculando, 81 a vencer, 27 vencidas (legitimas).
+
+## Ver campanha funcional
+
+- **Causa**: o botao so trocava de aba, sem localizar a campanha. Agora GET /api/notificacoes resolve nunciante, led e campanha_ref (campanha direta, reserva ou grupo); o botao (toast e central) vai a planilha, busca o anunciante, limpa os filtros e pisca a linha por 5s.
+
+## Ver campanha ainda falhava
+
+- **Causas**: (1) sem nunciante na notificacao (back antigo ou caso nao resolvido), o botao ia a planilha sem buscar nada; (2) com permissao ainda carregando (me=null), o clique desviava para o Dashboard ou caia em aba vazia.
+- **Correcao**: extracao do nome do texto do toast como fallback; sem permissao carregada nao desvia; abas/planilha liberadas no modo offline (antes o fallback offline era inalcançavel).

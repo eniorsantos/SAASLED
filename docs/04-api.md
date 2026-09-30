@@ -65,7 +65,7 @@ Legenda de auth: 🔓 pública · 🔑 login · ✏️ admin/regional/operador �
 
 | Método | Rota | Auth | Detalhes |
 |--------|------|------|----------|
-| GET | `/api/notificacoes` | 🔓 (+escopo: filtra por `cidade_id`) | últimas 50 `{..., cidade_id?}` |
+| GET | `/api/notificacoes` | 🔓 (+escopo: filtra por `cidade_id`) | últimas 50 `{..., cidade_id?, anunciante?, led?, campanha_ref?}` (para o Ver campanha) |
 | POST | `/api/notificacoes/varredura` | 🔑 | executa a varredura sob demanda → `{criadas, hoje}` |
 | PATCH | `/api/notificacoes/:id/lida` | 🔑 | marca como lida |
 | GET | `/api/auditoria` | 👑 | últimas 100 linhas `{quando, quem, oque, detalhe}` |

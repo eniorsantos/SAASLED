@@ -425,10 +425,10 @@ app.get('/api/dashboard', authOpcional, (req, res) => {
   const totalLeds = db.prepare('SELECT COUNT(*) v FROM leds').get().v;
   const leds = db.prepare('SELECT * FROM leds').all().filter((l) => filtro.length === 0 || filtro.includes(l.cidade_id));
   const comSt = camps.map((c) => ({ ...c, status: R.statusCampanha(c, cfg) }));
-  const P_INI = '2026-10-01', P_FIM = '2026-10-31';
+  const { ini: P_INI, fim: P_FIM, rotulo: PERIODO } = R.periodoReferencia(R.hojeISO());
   const porLed = leds.map((l) => R.ocupacao(camps.filter((c) => c.led_codigo === l.codigo), P_INI, P_FIM));
   const ocupMedia = porLed.length ? +(porLed.reduce((a, b) => a + b, 0) / porLed.length).toFixed(1) : 0;
-  const aVencer = comSt.filter((c) => { const d = R.diasEntre(c.fim, R.hojeISO()); return d >= -1 && d <= 7 && c.inicio <= R.hojeISO(); }).length;
+  const aVencer = comSt.filter((c) => { const d = R.diasEntre(c.fim, R.hojeISO()); return d >= 0 && d <= 7 && c.inicio <= R.hojeISO(); }).length;
   const comCampanha = new Set(comSt.filter((c) => c.status !== 'vencida').map((c) => c.led_codigo));
   const livres = Math.max(0, leds.length - comCampanha.size);
   // Rosca real: campanhas veiculando vs. reservadas + LEDs livres (era fixa 55/25/20)
@@ -443,13 +443,13 @@ app.get('/api/dashboard', authOpcional, (req, res) => {
   const cidades = db.prepare('SELECT * FROM cidades').all()
     .filter((c) => filtro.length === 0 || filtro.includes(c.id));
   res.json({
-    hoje: R.hojeISO(), periodo: 'Outubro 2026',
+    hoje: R.hojeISO(), periodo: PERIODO,
     kpis: { ocupacao_media: ocupMedia, leds_ativos: `${leds.length}/${totalLeds}`, a_vencer_7d: aVencer, livres },
     distribuicao: distV,
-    evolucao_mensal: [
-      { mes: 'Mai', ocupacao: 58 }, { mes: 'Jun', ocupacao: 61 }, { mes: 'Jul', ocupacao: 66 },
-      { mes: 'Ago', ocupacao: 64 }, { mes: 'Set', ocupacao: 70 }, { mes: 'Out', ocupacao: ocupMedia },
-    ],
+    evolucao_mensal: R.ultimos6Meses(R.hojeISO()).map(({ mes, ini, fim }) => {
+      const vals = leds.map((l) => R.ocupacao(camps.filter((c) => c.led_codigo === l.codigo), ini, fim));
+      return { mes, ocupacao: vals.length ? +(vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(1) : 0 };
+    }),
     ocupacao_por_cidade: cidades.map((c) => {
       const ledsC = leds.filter((l) => l.cidade_id === c.id);
       const vals = ledsC.map((l) => R.ocupacao(camps.filter((cc) => cc.led_codigo === l.codigo), P_INI, P_FIM));
@@ -710,7 +710,35 @@ app.get('/api/notificacoes', authOpcional, (req, res) => {
   const filtro = filtroEfetivo(req);
   let rows = db.prepare('SELECT * FROM notificacoes ORDER BY criada_em DESC LIMIT 50').all();
   if (filtro.length) rows = rows.filter((n) => !n.cidade_id || filtro.includes(n.cidade_id));
-  res.json(rows.map((n) => ({ id: n.id, titulo: n.titulo, corpo: n.corpo, lida: !!n.lida, evento: n.evento, campanha_id: n.campanha_id, cidade_id: n.cidade_id || undefined })));
+  // Enriquece para o "Ver campanha": anunciante, LED e id real da campanha
+  const porId = Object.fromEntries(db.prepare('SELECT * FROM campanhas').all().map((c) => [c.id, c]));
+  const resDe = (rid) => db.prepare(`
+    SELECT r.*, c.anunciante AS camp_anunciante, c.led_codigo, c.id AS camp_id, c.cidade_id FROM reservas r
+    JOIN campanhas c ON c.id = r.campanha_id WHERE r.id = ?`).get(rid);
+  res.json(rows.map((n) => {
+    let anunciante, led, ref;
+    const camp = porId[n.campanha_id];
+    if (camp) ({ anunciante, led_codigo: led, id: ref } = camp);
+    else {
+      const r = resDe(n.campanha_id);
+      if (r) { anunciante = r.anunciante || r.camp_anunciante; led = r.led_codigo; ref = r.camp_id; }
+      else {
+        const m = /^grupo:(ini|venc|res):(.*):(\d{4}-\d{2}-\d{2})$/.exec(n.campanha_id);
+        if (m) {
+          anunciante = m[2];
+          const alvo = db.prepare('SELECT * FROM campanhas WHERE anunciante = ? AND inicio = ? LIMIT 1').get(m[2], m[3])
+            || db.prepare(`SELECT c.* FROM reservas r JOIN campanhas c ON c.id = r.campanha_id
+                WHERE r.inicio = ? AND (r.anunciante = ? OR (r.anunciante = '' AND c.anunciante = ?)) LIMIT 1`).get(m[3], m[2], m[2]);
+          if (alvo) { led = alvo.led_codigo; ref = alvo.id; }
+        }
+      }
+    }
+    return {
+      id: n.id, titulo: n.titulo, corpo: n.corpo, lida: !!n.lida, evento: n.evento,
+      campanha_id: n.campanha_id, cidade_id: n.cidade_id || undefined,
+      anunciante, led, campanha_ref: ref,
+    };
+  }));
 });
 app.post('/api/notificacoes/varredura', auth(), (req, res) => {
   const r = R.varreduraNotificacoes(db);

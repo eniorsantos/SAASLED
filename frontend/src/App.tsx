@@ -54,6 +54,30 @@ export default function App() {
   const [importMsg, setImportMsg] = useState<{ tipo: 'ok' | 'erro'; texto: string } | null>(null);
   // Toasts dispensados nesta sessão (voltam no próximo login/refresh)
   const [dismissed, setDismissed] = useState<(number | string)[]>([]);
+  // "Ver campanha": vai à planilha, busca o anunciante e pisca a linha.
+  // Funciona mesmo se a API ainda não mandar anunciante (extrai do texto).
+  const [destaque, setDestaque] = useState<string | null>(null);
+  const extrairAnunciante = (n: Notif): string | null => {
+    if (n.anunciante) return n.anunciante;
+    const t = (n.corpo || '').replace(/^Reserva de /i, '');
+    const m = t.match(/^(.*?)\s+(inicia em|encerra em|·)/);
+    const nome = (m ? m[1] : t.split('·')[0]).trim();
+    return nome || null;
+  };
+  const verCampanha = (n: Notif) => {
+    if (online && me && !can('planilha')) { setTab('dashboard'); return; }
+    setTab('planilha');
+    const nome = extrairAnunciante(n);
+    if (nome) setQ(nome);
+    setStFilter('');
+    trocarCidade('');
+    setDestaque(n.campanha_ref || null);
+  };
+  useEffect(() => {
+    if (!destaque) return;
+    const t = setTimeout(() => setDestaque(null), 5000);
+    return () => clearTimeout(t);
+  }, [destaque]);
   // dias de hoje (dash.hoje) até a data: >0 faltam, 0 encerra hoje, <0 encerrou
   const diasAte = (iso: string) => Math.round(
     (new Date(iso + 'T12:00:00').getTime() - new Date(dash.hoje + 'T12:00:00').getTime()) / 86400000);
@@ -200,9 +224,9 @@ export default function App() {
   };
   const podeEditar = can('campanhas_editar');
 
-  // Aba padrão respeita a visibilidade do usuário
+  // Aba padrão respeita a visibilidade do usuário (só com permissões carregadas)
   useEffect(() => {
-    if (!me) return;
+    if (!me || !online) return;
     if (tab === 'planilha' && !can('planilha')) setTab('dashboard');
     else if (tab === 'graficos' && !can('graficos')) setTab('dashboard');
     else if (tab === 'reservas' && !can('reservas')) setTab('dashboard');
@@ -457,7 +481,7 @@ export default function App() {
       <div className="toasts" role="alert">
         {can('notificacoes') && pendentes.filter((n) => !dismissed.includes(n.id)).slice(0, 4).map((n) => (
           <ToastItem key={n.id} n={n}
-            onView={() => setTab('planilha')}
+            onView={() => verCampanha(n)}
             onClose={() => setDismissed((xs) => [...xs, n.id])} />
         ))}
       </div>
@@ -498,6 +522,7 @@ export default function App() {
                     <b>{n.titulo}</b><br />{n.corpo}
                     {!n.lida && (
                       <div className="actions">
+                        <button onClick={() => verCampanha(n)}>Ver campanha</button>
                         <button onClick={() => {
                           if (online && n.id > 0) api.marcarLida(n.id).then(carregar).catch(() => {});
                           setNotifs((xs) => xs.map((x) => (x.id === n.id ? { ...x, lida: true } : x)));
@@ -614,12 +639,12 @@ export default function App() {
         <div className="card" style={{ marginBottom: 18 }}>
           <div className="tabs">
             <div className={`tab ${tab === 'dashboard' ? 'active' : ''}`} onClick={() => setTab('dashboard')}>Dashboard</div>
-            {can('planilha') && <div className={`tab ${tab === 'planilha' ? 'active' : ''}`} onClick={() => setTab('planilha')}>Visualizar como planilha</div>}
-            {can('graficos') && <div className={`tab ${tab === 'graficos' ? 'active' : ''}`} onClick={() => setTab('graficos')}>Gráficos</div>}
+            {(can('planilha') || !online) && <div className={`tab ${tab === 'planilha' ? 'active' : ''}`} onClick={() => setTab('planilha')}>Visualizar como planilha</div>}
+            {(can('graficos') || !online) && <div className={`tab ${tab === 'graficos' ? 'active' : ''}`} onClick={() => setTab('graficos')}>Gráficos</div>}
             {can('reservas') && <div className={`tab ${tab === 'reservas' ? 'active' : ''}`} onClick={() => setTab('reservas')}>Reservas</div>}
           </div>
 
-          {tab === 'planilha' && can('planilha') && (
+          {tab === 'planilha' && (can('planilha') || !online) && (
             <>
               <div className="toolbar">
                 <input placeholder="🔍 Buscar…" value={q} onChange={(e) => setQ(e.target.value)} />
@@ -655,14 +680,14 @@ export default function App() {
                   <tbody>
                     {online ? (
                       linhas.length ? linhas.map((r, i) => (
-                        <tr key={r.id || i}>
+                        <tr key={r.id || i} className={r.id && r.id === destaque ? 'destaque' : undefined}>
                           <td>{r.cidade}</td><td>{r.led}</td>
                           <td><input defaultValue={r.anunciante} onBlur={(e) => salvarInline(r, 'anunciante', e.target.value)} /></td>
                           <td>{br(r.inicio)}</td><td>{br(r.fim)}</td>
                           <td><span className="status-dot" style={{ background: STATUS_COR[r.status] || '#888' }} />{STATUS_ROTULO[r.status] || r.status}
                             {r.status === 'a_vencer' && r.fim !== '—' && (() => {
                               const d = diasAte(r.fim);
-                              const txt = d > 0 ? ` · ${d}d` : d === 0 ? ' · encerra hoje' : ' · encerrou ontem';
+                              const txt = d > 0 ? ` · ${d}d` : ' · encerra hoje';
                               return <small style={{ color: 'var(--muted)' }}>{txt}</small>;
                             })()}
                           </td>
@@ -719,7 +744,7 @@ export default function App() {
             </table>
           )}
 
-          {tab === 'graficos' && can('graficos') && (
+          {tab === 'graficos' && (can('graficos') || !online) && (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18 }}>
               <div><h2 style={{ fontSize: '.85rem' }}>EVOLUÇÃO MENSAL (%)</h2>
                 <ResponsiveContainer width="100%" height={220}>
@@ -754,7 +779,7 @@ export default function App() {
 
         <footer>
           <span>LATÊNCIA DE DADOS: {lat} · TODOS OS PAINÉIS REPORTANDO{online ? '' : ' · MODO OFFLINE (mockup)'}</span>
-          <span>MOCKUP DE INTERFACE · PERÍODO: OUT-2026</span>
+          <span>MOCKUP DE INTERFACE · PERÍODO: {dash.periodo.toUpperCase()}</span>
         </footer>
       </div>
 
