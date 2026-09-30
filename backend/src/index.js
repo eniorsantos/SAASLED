@@ -291,9 +291,7 @@ function reservasDaCampanha(campanhaId, anunciantePadrao) {
   return db.prepare('SELECT * FROM reservas WHERE campanha_id = ? ORDER BY inicio').all(campanhaId)
     .map((r) => ({ ...r, anunciante: r.anunciante || anunciantePadrao || '' }));
 }
-function choquePeriodo(aIni, aFim, bIni, bFim) {
-  return aIni <= bFim && bIni <= aFim;
-}
+// (rotação: reservas convivem com campanha e entre si — sem checagem de choque)
 app.get('/api/campanhas/:id/reservas', (req, res) => {
   const camp = db.prepare('SELECT * FROM campanhas WHERE id = ?').get(req.params.id);
   if (!camp) return res.status(404).json({ erro: 'campanha não encontrada' });
@@ -309,10 +307,7 @@ app.post('/api/campanhas/:id/reservas', auth(), requer('reservas'), (req, res) =
     return res.status(400).json({ erro: 'data inválida (use AAAA-MM-DD válido)' });
   if (inicio > fim) return res.status(400).json({ erro: 'início posterior ao fim' });
   const anu = R.normalizarAnunciante(req.body?.anunciante) || camp.anunciante;
-  if (choquePeriodo(inicio, fim, camp.inicio, camp.fim))
-    return res.status(409).json({ erro: `sobrepõe o período da campanha (${camp.inicio} → ${camp.fim})` });
-  const outra = reservasDaCampanha(req.params.id).find((r) => choquePeriodo(inicio, fim, r.inicio, r.fim));
-  if (outra) return res.status(409).json({ erro: `sobrepõe a reserva ${outra.inicio} → ${outra.fim}`, choque: outra });
+  // rotação: reservas convivem com o período da campanha e entre si (sem checagem de choque)
   const id = 'r' + Date.now();
   db.prepare('INSERT OR IGNORE INTO anunciantes (nome) VALUES (?)').run(anu);
   db.prepare('INSERT INTO reservas (id,campanha_id,inicio,fim,anunciante,criada_por) VALUES (?,?,?,?,?,?)')
@@ -362,11 +357,7 @@ app.put('/api/reservas/:id', auth(), requer('reservas'), (req, res) => {
   if (!R.validarDataISO(nx.inicio) || !R.validarDataISO(nx.fim))
     return res.status(400).json({ erro: 'data inválida (use AAAA-MM-DD válido)' });
   if (nx.inicio > nx.fim) return res.status(400).json({ erro: 'início posterior ao fim' });
-  if (choquePeriodo(nx.inicio, nx.fim, camp.inicio, camp.fim))
-    return res.status(409).json({ erro: `sobrepõe o período da campanha (${camp.inicio} → ${camp.fim})` });
-  const outra = db.prepare('SELECT * FROM reservas WHERE campanha_id = ? AND id != ? ORDER BY inicio')
-    .all(cur.campanha_id, req.params.id).find((r) => choquePeriodo(nx.inicio, nx.fim, r.inicio, r.fim));
-  if (outra) return res.status(409).json({ erro: `sobrepõe a reserva ${outra.inicio} → ${outra.fim}`, choque: outra });
+  // rotação: sem checagem de choque (ver POST)
   db.prepare('INSERT OR IGNORE INTO anunciantes (nome) VALUES (?)').run(nx.anunciante);
   db.prepare('UPDATE reservas SET inicio = ?, fim = ?, anunciante = ? WHERE id = ?')
     .run(nx.inicio, nx.fim, nx.anunciante, req.params.id);
@@ -446,10 +437,12 @@ app.get('/api/dashboard', authOpcional, (req, res) => {
       { mes: 'Mai', ocupacao: 58 }, { mes: 'Jun', ocupacao: 61 }, { mes: 'Jul', ocupacao: 66 },
       { mes: 'Ago', ocupacao: 64 }, { mes: 'Set', ocupacao: 70 }, { mes: 'Out', ocupacao: ocupMedia },
     ],
-    ocupacao_por_cidade: cidades.map((c) => ({
-      cidade: c.nome.toUpperCase(), id: c.id,
-      valor: c.id === 'aracaju' ? ocupMedia : 0,
-    })),
+    ocupacao_por_cidade: cidades.map((c) => {
+      const ledsC = leds.filter((l) => l.cidade_id === c.id);
+      const vals = ledsC.map((l) => R.ocupacao(camps.filter((cc) => cc.led_codigo === l.codigo), P_INI, P_FIM));
+      const media = vals.length ? +(vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(1) : 0;
+      return { cidade: c.nome.toUpperCase(), id: c.id, valor: media };
+    }),
     gantt_por_led: leds.map((l) => ({
       ...l,
       espacos_usados: new Set(comSt.filter((c) => c.led_codigo === l.codigo && c.fim >= R.hojeISO()).map((c) => c.anunciante)).size,
@@ -530,15 +523,27 @@ function parseCSVLine(line, delim) {
   out.push(cur.trim());
   return out;
 }
+const MESES_PT = { jan: '01', fev: '02', mar: '03', abr: '04', mai: '05', jun: '06', jul: '07', ago: '08', set: '09', out: '10', nov: '11', dez: '12' };
 function normalizarData(s) {
-  s = String(s || '').trim().replace(/^\uFEFF/, '');
+  s = String(s || '').trim().replace(/^\uFEFF/, '').replace(/\s+/g, '');
   if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return R.validarDataISO(s) ? s : null;
-  const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2}|\d{4})$/);
-  if (!m) return null;
-  let [, d, mo, y] = m;
-  if (y.length === 2) y = String(Number(y) <= 49 ? 2000 + Number(y) : 1900 + Number(y));
-  const iso = `${y}-${String(mo).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-  return R.validarDataISO(iso) ? iso : null;
+  let m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2}|\d{4})$/);
+  if (m) {
+    let [, d, mo, y] = m;
+    if (y.length === 2) y = String(Number(y) <= 49 ? 2000 + Number(y) : 1900 + Number(y));
+    const iso = `${y}-${String(mo).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    return R.validarDataISO(iso) ? iso : null;
+  }
+  // dia/mês por extenso: 27/nov. · 02/out · 01/set. · 14/ago.
+  m = s.match(/^(\d{1,2})\/([a-z]{3,9})\.?(?:\/(\d{2}|\d{4}))?$/i);
+  if (m) {
+    const mo = MESES_PT[m[2].slice(0, 3).toLowerCase()];
+    if (!mo) return null;
+    const y = m[3] ? (m[3].length === 2 ? String(Number(m[3]) <= 49 ? 2000 + Number(m[3]) : 1900 + Number(m[3])) : m[3]) : String(new Date().getFullYear());
+    const iso = `${y}-${mo}-${String(m[1]).padStart(2, '0')}`;
+    return R.validarDataISO(iso) ? iso : null;
+  }
+  return null;
 }
 const normKey = (s) => String(s || '').trim().toLowerCase();
 app.get('/api/import/modelo.csv', (req, res) => {
@@ -573,61 +578,120 @@ app.post('/api/import/planilha', auth(), requer('importar'), (req, res) => {
     paresReserva.push({ k: m[1], i, j, a });
   });
   const cidades = db.prepare('SELECT * FROM cidades').all();
-  const porNome = Object.fromEntries(cidades.map((c) => [normKey(c.nome), c.id]));
-  const porId = Object.fromEntries(cidades.map((c) => [normKey(c.id), c.id]));
+  const semAcentoLower = (s) => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  const porNome = Object.fromEntries(cidades.map((c) => [semAcentoLower(c.nome), c.id]));
+  const porId = Object.fromEntries(cidades.map((c) => [semAcentoLower(c.id), c.id]));
+  const ledsTodos = db.prepare('SELECT * FROM leds').all();
+  const porLed = Object.fromEntries(ledsTodos.map((l) => [semAcentoLower(l.codigo).replace(/\s+/g, ' '), l]));
   const cfg = R.getConfig(db), hoje = R.hojeISO();
   const criadas = [], ignoradas = [];
-  let reservasCriadas = 0;
+  let reservasCriadas = 0, anosAjustados = 0;
+  // ano seguinte: "01/09/2026 → 28/02/2026" só faz sentido como 28/02/2027
+  const rolarAnoFim = (ini, f) => {
+    if (ini && f && f < ini) {
+      const f2 = `${Number(f.slice(0, 4)) + 1}${f.slice(4)}`;
+      if (R.validarDataISO(f2)) { anosAjustados++; return f2; }
+    }
+    return f;
+  };
   linhas.slice(1).forEach((line, k) => {
     const nLinha = k + 2, col = parseCSVLine(line, delim);
     const rot = { linha: nLinha, anunciante: col[iAnu] || '' };
-    const cidadeId = porId[normKey(col[iCid])] || porNome[normKey(col[iCid])];
+    const cidadeId = porId[semAcentoLower(col[iCid])] || porNome[semAcentoLower(col[iCid])];
     if (!cidadeId) return ignoradas.push({ ...rot, motivo: `cidade "${col[iCid]}" não cadastrada` });
-    const led = String(col[iLed] || '').trim();
-    if (!db.prepare('SELECT * FROM leds WHERE codigo = ?').get(led))
-      return ignoradas.push({ ...rot, motivo: `LED "${led}" não cadastrado` });
-    if (cidadeDoLed(led) !== cidadeId)
+    const ledBruto = String(col[iLed] || '').trim();
+    const ledRow = porLed[semAcentoLower(ledBruto).replace(/\s+/g, ' ')];
+    if (!ledRow)
+      return ignoradas.push({ ...rot, motivo: `LED "${ledBruto}" não cadastrado` });
+    const led = ledRow.codigo;
+    if (ledRow.cidade_id !== cidadeId)
       return ignoradas.push({ ...rot, motivo: `LED ${led} não é da cidade informada` });
     if (!escopoCidadeOk(req.user, cidadeId))
       return ignoradas.push({ ...rot, motivo: 'fora do seu escopo de cidades' });
     const anunciante = R.normalizarAnunciante(col[iAnu]);
-    if (!anunciante) return ignoradas.push({ ...rot, motivo: 'anunciante vazio' });
-    const inicio = normalizarData(col[iIni]), fim = normalizarData(col[iFim]);
-    if (!inicio || !fim) return ignoradas.push({ ...rot, motivo: `data inválida ("${col[iIni]}" → "${col[iFim]}")` });
-    if (inicio > fim) return ignoradas.push({ ...rot, motivo: 'início posterior ao fim' });
-    if (db.prepare('SELECT * FROM campanhas WHERE led_codigo = ? AND anunciante = ? AND inicio = ?').get(led, anunciante, inicio))
-      return ignoradas.push({ ...rot, motivo: 'já existe (mesmo LED/anunciante/início)' });
-    const usados = R.espacosUsados(db, led, hoje);
-    if (!usados.includes(anunciante) && usados.length >= cfg.max_clientes_por_led)
-      return ignoradas.push({ ...rot, motivo: `LED ${led} lotado (${usados.length}/${cfg.max_clientes_por_led})` });
-    const reservada = iRes >= 0 ? ['1', 'sim', 's', 'verdadeiro', 'true'].includes(normKey(col[iRes])) : false;
-    const id = `imp-${Date.now()}-${k}`;
-    db.prepare('INSERT OR IGNORE INTO anunciantes (nome) VALUES (?)').run(anunciante);
-    db.prepare('INSERT INTO campanhas (id,cidade_id,led_codigo,anunciante,inicio,fim,reservada) VALUES (?,?,?,?,?,?,?)')
-      .run(id, cidadeId, led, anunciante, inicio, fim, reservada ? 1 : 0);
-    criadas.push(id);
-    // múltiplas reservas da linha (ReservaN_Anunciante/Início/Fim)
-    const feitas = [];
+    const rawIni = col[iIni] || '', rawFim = col[iFim] || '';
+    let inicio = normalizarData(rawIni), fim = normalizarData(rawFim);
+    if ((!inicio && rawIni) || (!fim && rawFim))
+      return ignoradas.push({ ...rot, motivo: `data inválida ("${rawIni}" → "${rawFim}")` });
+    if (!inicio && fim) inicio = fim; // só um lado preenchido = diária única
+    if (inicio && !fim) fim = inicio;
+    // pares de reserva válidos (para o fluxo normal e para o fallback reserva-only)
+    const candidatas = [];
     for (const p of paresReserva) {
       const rawI = col[p.i] || '', rawF = col[p.j] || '';
-      const anuRes = R.normalizarAnunciante(p.a >= 0 ? col[p.a] || '' : '') || anunciante;
       if (!rawI && !rawF) continue;
-      const tag = `linha ${nLinha} reserva ${p.k} (${anuRes})`;
-      const rIni = normalizarData(rawI), rFim = normalizarData(rawF);
+      const anuRes = R.normalizarAnunciante(p.a >= 0 ? col[p.a] || '' : '') || anunciante;
+      const tag = `linha ${nLinha} reserva ${p.k} (${anuRes || '?'})`;
+      // só um lado preenchido = diária única; lado inválido = erro
+      let rIni = normalizarData(rawI), rFim = normalizarData(rawF);
+      if ((!rIni && rawI) || (!rFim && rawF)) { ignoradas.push({ ...rot, motivo: `${tag}: data inválida ("${rawI}" → "${rawF}")` }); continue; }
+      if (!rIni && rFim) rIni = rFim;
+      if (rIni && !rFim) rFim = rIni;
       if (!rIni || !rFim) { ignoradas.push({ ...rot, motivo: `${tag}: data inválida ("${rawI}" → "${rawF}")` }); continue; }
+      if (rIni > rFim) rFim = rolarAnoFim(rIni, rFim);
       if (rIni > rFim) { ignoradas.push({ ...rot, motivo: `${tag}: início posterior ao fim` }); continue; }
-      if (choquePeriodo(rIni, rFim, inicio, fim)) { ignoradas.push({ ...rot, motivo: `${tag}: sobrepõe o período da campanha` }); continue; }
-      if (feitas.some((f) => choquePeriodo(rIni, rFim, f.inicio, f.fim))) { ignoradas.push({ ...rot, motivo: `${tag}: sobrepõe outra reserva da linha` }); continue; }
-      const rid = `imp-r-${Date.now()}-${k}-${p.k}`;
+      candidatas.push({ anuRes, rIni, rFim, tag });
+    }
+    // helper local: cria campanha com checagens de duplicada e lotação
+    const tentarCriar = (anunc, ini, fimm, reservadaFlag) => {
+      if (db.prepare('SELECT * FROM campanhas WHERE led_codigo = ? AND anunciante = ? AND inicio = ?').get(led, anunc, ini))
+        return { erro: 'já existe (mesmo LED/anunciante/início)' };
+      const usados = R.espacosUsados(db, led, hoje);
+      if (!usados.includes(anunc) && usados.length >= cfg.max_clientes_por_led)
+        return { erro: `LED ${led} lotado (${usados.length}/${cfg.max_clientes_por_led})` };
+      const id = `imp-${Date.now()}-${k}`;
+      db.prepare('INSERT OR IGNORE INTO anunciantes (nome) VALUES (?)').run(anunc);
+      db.prepare('INSERT INTO campanhas (id,cidade_id,led_codigo,anunciante,inicio,fim,reservada) VALUES (?,?,?,?,?,?,?)')
+        .run(id, cidadeId, led, anunc, ini, fimm, reservadaFlag ? 1 : 0);
+      criadas.push(id);
+      return { id };
+    };
+    const gravarReserva = (campId, anuRes, rIni, rFim) => {
+      const rid = `imp-r-${Date.now()}-${k}-${reservasCriadas}`;
       db.prepare('INSERT OR IGNORE INTO anunciantes (nome) VALUES (?)').run(anuRes);
       db.prepare('INSERT INTO reservas (id,campanha_id,inicio,fim,anunciante,criada_por) VALUES (?,?,?,?,?,?)')
-        .run(rid, id, rIni, rFim, anuRes, req.user.login);
-      feitas.push({ inicio: rIni, fim: rFim });
+        .run(rid, campId, rIni, rFim, anuRes, req.user.login);
       reservasCriadas++;
+    };
+    const checarReserva = (campId, feitas, cd, anuDefault) => {
+      const anu = cd.anuRes || anuDefault;
+      if (feitas.some((f) => f.inicio === cd.rIni && f.fim === cd.rFim && f.anu === anu)) { ignoradas.push({ ...rot, motivo: `${cd.tag}: reserva duplicada na linha` }); return; }
+      gravarReserva(campId, anu, cd.rIni, cd.rFim);
+      feitas.push({ inicio: cd.rIni, fim: cd.rFim, anu });
+    };
+    if (!inicio || !fim) {
+      // sem datas de campanha: a 1ª reserva válida vira campanha reservada
+      if (!anunciante && !candidatas.length)
+        return ignoradas.push({ ...rot, motivo: 'linha vazia ou sem datas' });
+      if (!candidatas.length)
+        return ignoradas.push({ ...rot, motivo: `data inválida ("${col[iIni]}" → "${col[iFim]}")` });
+      const primeira = candidatas[0];
+      const anuCamp = anunciante || primeira.anuRes;
+      if (!anuCamp) return ignoradas.push({ ...rot, motivo: 'anunciante vazio' });
+      const rc = tentarCriar(anuCamp, primeira.rIni, primeira.rFim, true);
+      if (rc.erro) return ignoradas.push({ ...rot, motivo: rc.erro });
+      ignoradas.push({ ...rot, motivo: `sem datas de campanha — criada como reservada de ${primeira.rIni} → ${primeira.rFim}`, aviso: true });
+      const feitas = [{ inicio: primeira.rIni, fim: primeira.rFim, anu: primeira.anuRes || anuCamp }];
+      candidatas.slice(1).forEach((cd) => checarReserva(rc.id, feitas, cd, anuCamp));
+      return;
+    }
+    if (inicio > fim) {
+      const rolado = rolarAnoFim(inicio, fim);
+      if (rolado === fim) return ignoradas.push({ ...rot, motivo: 'início posterior ao fim' });
+      fim = rolado;
+    }
+    if (!anunciante) return ignoradas.push({ ...rot, motivo: 'anunciante vazio' });
+    const reservada = iRes >= 0 ? ['1', 'sim', 's', 'verdadeiro', 'true'].includes(normKey(col[iRes])) : false;
+    const rc = tentarCriar(anunciante, inicio, fim, reservada);
+    if (rc.erro) return ignoradas.push({ ...rot, motivo: rc.erro });
+    const feitas = [];
+    for (const cd of candidatas) {
+      const rFimRolado = rolarAnoFim(cd.rIni, cd.rFim);
+      checarReserva(rc.id, feitas, rFimRolado === cd.rFim ? cd : { ...cd, rFim: rFimRolado }, anunciante);
     }
   });
-  log(req.user.login, 'planilha.import', `criadas=${criadas.length} reservas=${reservasCriadas} ignoradas=${ignoradas.length}`);
-  res.json({ total: linhas.length - 1, criadas: criadas.length, reservas_criadas: reservasCriadas, ignoradas, ids: criadas });
+  log(req.user.login, 'planilha.import', `criadas=${criadas.length} reservas=${reservasCriadas} anos_ajustados=${anosAjustados} ignoradas=${ignoradas.length}`);
+  res.json({ total: linhas.length - 1, criadas: criadas.length, reservas_criadas: reservasCriadas, anos_ajustados: anosAjustados, ignoradas, ids: criadas });
 });
 app.get('/api/notificacoes', (req, res) => {
   const rows = db.prepare('SELECT * FROM notificacoes ORDER BY criada_em DESC LIMIT 50').all();

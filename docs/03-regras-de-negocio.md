@@ -95,21 +95,25 @@ PNG por gráfico = evolução futura (§8.4).
 `Cidade;LED;Anunciante;Início;Fim[;Reservada]` **mais pares opcionais
 `ReservaN_Anunciante;ReservaN_Início;ReservaN_Fim` (N = 1, 2, 3…)** — cada par
 vira uma reserva da campanha da linha, com seu anunciante (vazio = o da
-linha), validada como na §3.8; conflito vira item ignorado, sem
-abortar a campanha. (`;` ou `,`; datas `DD/MM/AA`, `DD/MM/AAAA` ou ISO;
-`Reservada` aceita 1/sim; cabeçalhos sem acento funcionam.) Cidade por nome ou
-id, LED precisa existir, anunciante é criado se novo, `Status` é sempre
-recalculado (coluna ignorada). Cada linha vira criada ou ignorada com motivo
-(LED inexistente, data inválida, duplicada, LED lotado) —
-`{total, criadas, reservas_criadas, ignoradas[], ids[]}`.
+linha). (`;` ou `,`; datas `DD/MM/AA`, `DD/MM/AAAA`, ISO ou `DD/mês`
+(`27/nov.`); `Reservada` aceita 1/sim; cabeçalhos sem acento funcionam.)
+**Rotação**: reservas convivem com o período da campanha e entre si.
+**Ano seguinte**: `fim < inicio` vira `fim + 1 ano` (`01/09/26→28/02/26` =
+28/02/27; conta em `anos_ajustados`). **Diária única**: só um lado preenchido
+vale para ambos. **Sem datas de campanha + reserva válida** = campanha
+`reservada` criada do 1º par. Cidade por nome ou id (sem acento), LED por nome
+normalizado (ex.: `PRAÇA  ABRANTES` casa com `PRAÇA ABRANTES`), anunciante
+criado se novo, `Status` recalculado. Cada linha vira criada ou ignorada com
+motivo (LED/cidade, data inválida, duplicada, LED lotado, fora do escopo) —
+`{total, criadas, reservas_criadas, anos_ajustados, ignoradas[], ids[]}`.
 Modelo em `GET /api/import/modelo.csv` (com exemplo de Reserva1).
 
 ## 3.8 Reservas múltiplas por campanha
 
 Cada campanha aceita N períodos futuros (`reservas`), cada um com **seu
 anunciante** (vazio = o da campanha; toast e `A INICIAR` usam o da reserva):
-datas válidas, `inicio <= fim`, sem interseção com o período da própria
-campanha nem entre reservas irmãs (`409` com detalhe). Cada reserva com
+datas válidas, `inicio <= fim` (com rolagem de ano). Em **rotação**, reservas
+convivem com o período da campanha e entre si (sem validação de choque). Cada reserva com
 `0 ≤ inicio−hoje ≤ N_início` gera **seu próprio toast** `🔔 Reserva próxima`
 na varredura (dedupe por reserva/dia via id da reserva); reservas próximas
 também entram em `a_iniciar_lista` do dashboard.

@@ -135,6 +135,12 @@ export default function App() {
     } catch (e: any) { setImportMsg({ tipo: 'erro', texto: e.message }); }
   };
 
+  // Opções do filtro de cidade: sempre da API (novas cidades aparecem sozinhas)
+  const cidadesOpts = cidades.length
+    ? cidades
+    : [{ id: 'aracaju', nome: 'Aracaju', uf: 'SE' }, { id: 'salvador', nome: 'Salvador', uf: 'BA' }];
+  const cidadeNome = (id: string) => cidadesOpts.find((c) => c.id === id)?.nome || id || 'Aracaju';
+
   const trocarCidade = (v: string) => {
     setCidade(v);
     const u = new URL(location.href);
@@ -150,29 +156,25 @@ export default function App() {
     return r;
   }, [rows, q, stFilter, sortK, sortD]);
 
-  // Gantt: um bloco por cliente veiculando (nome no lugar do "VEICULANDO"
-  // genérico) + bloco de reservadas + livre completando a faixa
+  // Gantt: um bloco por campanha COM NOME (veiculando, reservada e vencida) +
+  // LIVRE completando — LED nunca parece vazio havendo campanhas
   const ganttBlocos = (camps: any[]) => {
-    const veic = camps.filter((c) => ['veiculando', 'a_vencer'].includes(c.status));
-    const res = camps.filter((c) => ['agendada', 'reservada'].includes(c.status));
-    const out: { cls: string; label: string; w: number; title?: string }[] = veic.map((c: any) => ({
-      cls: 'veic',
-      label: String(c.anunciante).toUpperCase(),
-      w: 0,
-      title: `${c.anunciante} · ${br(c.inicio)} → ${br(c.fim)}`,
-    }));
-    if (out.length) {
-      const w = Math.max(16, Math.floor(56 / out.length));
-      out.forEach((b) => { b.w = w; });
-    }
-    let usado = out.reduce((a, b) => a + b.w, 0);
-    if (res.length) {
-      out.push({ cls: 'res', label: res.length > 1 ? `RESERVADA (${res.length})` : `RESERVADA · ${String(res[0].anunciante).toUpperCase()}`, w: 24, title: res.map((c: any) => `${c.anunciante} · ${br(c.inicio)} → ${br(c.fim)}`).join(' · ') });
-      usado += 24;
-    }
-    if (!veic.length && !res.length) return [{ cls: 'livre', label: 'LIVRE', w: 96 }];
-    if (usado < 92) out.push({ cls: 'livre', label: 'LIVRE', w: 96 - usado });
-    return out;
+    const clsPorStatus: Record<string, string> = { veiculando: 'veic', a_vencer: 'veic', agendada: 'res', reservada: 'res', vencida: 'venc' };
+    const rotuloStatus: Record<string, string> = { agendada: 'RESERVADA', reservada: 'RESERVADA', vencida: 'ENCERRADA' };
+    const blocos: { cls: string; label: string; w: number; title?: string }[] = camps.map((c: any) => {
+      const cls = clsPorStatus[c.status] || 'veic';
+      const pre = rotuloStatus[c.status] ? `${rotuloStatus[c.status]} · ` : '';
+      return {
+        cls, label: `${pre}${String(c.anunciante).toUpperCase()}`, w: 0,
+        title: `${c.anunciante} · ${br(c.inicio)} → ${br(c.fim)} · ${STATUS_ROTULO[c.status] || c.status}`,
+      };
+    });
+    if (!blocos.length) return [{ cls: 'livre', label: 'LIVRE', w: 96 }];
+    const w = Math.min(40, Math.max(10, Math.floor(88 / blocos.length)));
+    blocos.forEach((b) => { b.w = w; });
+    const usado = w * blocos.length;
+    if (usado < 90) blocos.push({ cls: 'livre', label: 'LIVRE', w: 96 - usado });
+    return blocos;
   };
 
   const fazerLogin = async () => {
@@ -472,9 +474,10 @@ export default function App() {
           </div>
           <div className="select">🏙️ Cidade:{' '}
             <select value={cidade} onChange={(e) => trocarCidade(e.target.value)}>
-              <option value="">Todas</option>
-              <option value="aracaju">Aracaju</option>
-              <option value="salvador">Salvador</option>
+              <option value="">Todas ({cidadesOpts.length})</option>
+              {cidadesOpts.map((c) => (
+                <option key={c.id} value={c.id}>{c.nome}</option>
+              ))}
             </select> ▾
           </div>
           <div className="pill">📅 {dash.periodo}</div>
@@ -509,12 +512,12 @@ export default function App() {
           <button className="pill" onClick={sair} style={{ cursor: 'pointer' }}>Sair</button>
         </div>
 
-        <div className="breadcrumb">Todas as cidades <span>→</span> <b>{cidade || 'Aracaju'}</b>{ledSel && (<><span>→</span> <b>{ledSel}</b></>)}</div>
+        <div className="breadcrumb">Todas as cidades <span>→</span> <b>{cidadeNome(cidade)}</b>{ledSel && (<><span>→</span> <b>{ledSel}</b></>)}</div>
 
         <div className="grid">
           <div className="card">
             <h2>OCUPAÇÃO POR LED</h2>
-            <p className="sub">Linha do tempo de campanhas veiculando / reservadas por painel — Aracaju.</p>
+            <p className="sub">Linha do tempo de campanhas veiculando / reservadas por painel — {cidadeNome(cidade)}.</p>
             <span className="badge b-warn">● VENCIMENTO PRÓXIMO: AJU 01</span>
             {dash.gantt_por_led.map((l) => {
               const usados = l.espacos_usados ?? l.campanhas.length;
@@ -566,7 +569,7 @@ export default function App() {
             <p className="sub">Ranking de ocupação (%). Clique para filtrar.</p>
             <div className="bars">
               {dash.ocupacao_por_cidade.map((b) => (
-                <div key={b.cidade} className="bar" onClick={() => trocarCidade(b.id === 'aracaju' ? 'aracaju' : '')}>
+                <div key={b.cidade} className="bar" onClick={() => trocarCidade(b.id || '')}>
                   <div className={`val ${b.valor === 0 ? 'empty' : ''}`} style={{ height: `${Math.max(b.valor, 2)}%` }}>
                     <span style={b.valor === 0 ? { color: 'var(--muted)' } : undefined}>{b.valor === 0 ? '—' : `${b.valor}%`}</span>
                   </div>

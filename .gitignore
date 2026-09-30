@@ -1,5 +1,8 @@
 node_modules/
 dist/
 data.db
+*.db-shm
+*.db-wal
+*.db-journal
 *.log
 .DS_Store

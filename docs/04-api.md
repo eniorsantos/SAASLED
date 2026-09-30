@@ -38,7 +38,7 @@ Legenda de auth: 🔓 pública · 🔑 login · ✏️ admin/regional/operador �
 | PUT | `/api/campanhas/:id` | `campanhas_editar` | edição parcial (usada pelo inline da planilha); troca de LED/anunciante revalida a lotação (ignorando a própria campanha) |
 | DELETE | `/api/campanhas/:id` | `campanhas_editar` | - |
 | GET | `/api/campanhas/:id/reservas` | 🔓 | N períodos futuros (cada um com seu `anunciante`) |
-| POST | `/api/campanhas/:id/reservas` | `reservas` | `{inicio, fim, anunciante?}` (vazio = o da campanha); 409 se intersecta a campanha ou outra reserva; cada reserva notifica o início (doc 03 §3.8) |
+| POST | `/api/campanhas/:id/reservas` | `reservas` | `{inicio, fim, anunciante?}` (vazio = o da campanha); rotação sem choque; cada reserva notifica o início (doc 03 §3.8) |
 | GET | `/api/reservas` | 🔓 (+escopo) | menu global: `?cidades=`, `?led=`, `?campanha_id=`; cada item traz `anunciante`, `led_codigo`, `cidade_id/nome` |
 | PUT | `/api/reservas/:id` | `reservas` | `{inicio?, fim?, anunciante?}` com as mesmas validações do POST (ignorando a própria) |
 | DELETE | `/api/reservas/:id` | `reservas` | - |
@@ -59,7 +59,7 @@ Legenda de auth: 🔓 pública · 🔑 login · ✏️ admin/regional/operador �
 | GET | `/api/export/planilha.csv?...` | `exportar` | mesmos filtros da planilha (+`?token=`); `;`-separado com BOM |
 | GET | `/api/export/planilha.xlsx?...` | `exportar` | mesmos filtros (+`?token=`); aba `Veiculação` |
 | GET | `/api/import/modelo.csv` | 🔓 | modelo no padrão (cabeçalho + 2 exemplos, com Reserva1) |
-| POST | `/api/import/planilha` | `importar` | `{csv}` → `{total, criadas, reservas_criadas, ignoradas[{linha, anunciante, motivo}], ids}` (doc 03 §3.7) |
+| POST | `/api/import/planilha` | `importar` | `{csv}` → `{total, criadas, reservas_criadas, anos_ajustados, ignoradas[{linha, anunciante, motivo, aviso?}], ids}` (doc 03 §3.7) |
 
 ## Notificações / auditoria (§4.1, §9.2)
 

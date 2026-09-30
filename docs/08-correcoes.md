@@ -165,3 +165,23 @@ ormalizarAnunciante() em todas as escritas e nas chaves de grupo (Dup X = Dup X 
 - Banco esvaziado (todas as tabelas zeradas; config mantida).
 - **Achao no caminho**: seed usava INSERT puro e recriava tudo no boot seguinte, chegando a quebrar (UNIQUE usuarios.login). Seed agora idempotente (INSERT OR IGNORE) + SEED=false pula o seed garantindo so o admin de resgate.
 - Uso: $env:SEED='false'; npm start para operar vazio; sem a variavel, o seed repovoa.
+
+## Filtro de cidade nao carregava tudo
+
+- **Causas**: select do topo com cidades fixas (Aracaju/Salvador) — cidades novas nunca apareciam; clique na barra de cidade limpava o filtro em vez de filtrar; ocupacao_por_cidade valia so para Aracaju ( resto 0).
+- **Correcao**: opcoes vindas da API (+ breadcrumb/subtitulo dinamicos); clique filtra pela cidade; ocupacao calculada por cidade (media dos LEDs). Smoke isolado por DB_PATH (item 18); base real do usuario (17 LEDs) preservada.
+
+## Limpeza mantendo os LEDs
+
+- Banco zerado exceto leds (32), cidades (6, para os LEDs nao ficarem orfaos) e config; admin de resgate recriado. Boot normal nao resemeia (cidades presentes).
+
+## Importacao real (256 linhas)
+
+- Resultado: 179 campanhas + 76 reservas; 84 ignoradas (48 vazias, 27 nomes sem datas, 2 duplicadas, 7 avisos de reserva-virada-campanha).
+- **Regra aprendida com o arquivo**: rotação — reservas convivem com campanha e entre si (validação de choque removida do POST/PUT/import).
+- **Datas por extenso** (27/nov.,  2/out...), **ano seguinte** (28/02/26 apos  1/09/26 = 2027, conta em nos_ajustados), **diária única**, **reserva-only vira campanha reservada**, match de LED/cidade sem acento (PRAÇA  ABRANTES, Camaçari).
+- **Defeito pego no smoke**: fallback de diária única aceitava lado inválido (31/02 + fim válido virava diária do fim); agora só lado vazio.
+
+## Gantt mostra todas as campanhas
+
+- Vencidas sumiam da faixa e o LED parecia vazio: agora cada campanha tem bloco com nome (teal veiculando, roxo reservada, apagado encerrada) e LIVRE so no restante.

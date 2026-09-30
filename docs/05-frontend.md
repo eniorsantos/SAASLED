@@ -20,9 +20,9 @@ clique na linha do Gantt seleciona o LED e libera "+ Nova campanha".
 
 Topbar (brand, LIVE, 4 KPIs, filtro, período, botões **📺 LEDs**, **🗓️ Reservas**,
 **👥 Usuários**, sininho, perfil/sair — cada um só com o recurso) ·
-Ocupação por LED (Gantt com **um bloco por cliente veiculando, com o nome**,
-bloco de reservadas e livre; tooltip com período; **selo `x/8 espaços`** por
-painel) ·
+Ocupação por LED (Gantt com **um bloco por campanha, com o nome** — veiculando
+em teal, `RESERVADA · NOME` em roxo, `ENCERRADA · NOME` apagado — e LIVRE só no
+restante; tooltip com período e status; **selo `x/8 espaços`** por painel) ·
 Distribuição por status (rosca Recharts) · Ocupação por cidade (barras) · A vencer (só `a_vencer`) + **A iniciar**
 (`agendada` + reservas próximas, com estados vazios próprios) ·
 Abas **Dashboard / Visualizar como planilha / Gráficos / Reservas** (rosca→linha

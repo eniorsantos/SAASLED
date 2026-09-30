@@ -12,6 +12,8 @@ const server = app.listen(0, async () => {
     assert.equal(dash.kpis.leds_ativos, '4/4', 'kpis leds 4/4');
     assert.ok(Array.isArray(dash.distribuicao) && dash.distribuicao.length === 3, 'rosca 3 fatias');
     assert.ok(Array.isArray(dash.gantt_por_led) && dash.gantt_por_led.length === 4, 'gantt 4 leds');
+    assert.ok(dash.ocupacao_por_cidade.find((c) => c.id === 'aracaju').valor > 0, 'aracaju com ocupação real');
+    assert.equal(dash.ocupacao_por_cidade.find((c) => c.id === 'salvador').valor, 0, 'salvador sem LEDs = 0');
     const plan = await get('/api/planilha');
     assert.ok(plan.length >= 8, 'planilha >= 8 campanhas');
     const login = await (await fetch(base + '/api/auth/login', {
@@ -59,8 +61,8 @@ const server = app.listen(0, async () => {
       body: JSON.stringify({ csv: 'Cidade;LED;Anunciante;Início;Fim;Reserva1_Anunciante;Reserva1_Início;Reserva1_Fim\nAracaju;AJU 03;Imp A;01/12/26;31/01/27;Imp Parceiro;01/02/27;28/02/27\nAracaju;AJU 03;Imp B;2026-12-01;2027-01-31;;2026-12-15;2027-01-05\nAracaju;ZZZ 99;Imp C;01/12/26;31/01/27;;;\nAracaju;AJU 03;Imp A;01/12/26;31/01/27;;;\nAracaju;AJU 03;Imp D;31/02/27;01/03/27;;;' }),
     })).json();
     assert.equal(imp.criadas, 2, 'importa 2 válidas');
-    assert.equal(imp.reservas_criadas, 1, 'importa 1 reserva válida (Reserva1 de Imp A)');
-    assert.equal(imp.ignoradas.length, 4, 'ignora LED inexistente + duplicada + data inválida + reserva sobreposta');
+    assert.equal(imp.reservas_criadas, 2, 'importa as 2 reservas (rotação: convivem com a campanha)');
+    assert.equal(imp.ignoradas.length, 3, 'ignora LED inexistente + duplicada + data inválida');
     const impA = (await get('/api/campanhas?led=AJU%2003', login.token)).find((c) => c.anunciante === 'Imp A');
     const impARes = await get('/api/campanhas/' + impA.id + '/reservas');
     assert.equal(impARes[0].anunciante, 'Imp Parceiro', 'reserva guarda o próprio anunciante');
@@ -136,9 +138,9 @@ const server = app.listen(0, async () => {
     assert.equal(rA.status, 201, 'reserva 1 criada');
     const rB = await postRes('c4', { inicio: '2026-11-06', fim: '2026-11-20' });
     assert.equal(rB.status, 201, 'reserva 2 criada (múltiplas)');
-    assert.equal((await postRes('c4', { inicio: '2026-10-28', fim: '2026-11-02' })).status, 409, 'reserva sobreposta rejeitada');
-    assert.equal((await postRes('c4', { inicio: '2026-07-01', fim: '2026-07-10' })).status, 409, 'reserva dentro do período rejeitada');
-    assert.equal((await get('/api/campanhas/c4/reservas')).length, 2, 'lista 2 reservas');
+    const rC = await postRes('c4', { inicio: '2026-10-28', fim: '2026-11-02' });
+    assert.equal(rC.status, 201, 'reserva em rotação convive com as demais');
+    assert.equal((await get('/api/campanhas/c4/reservas')).length, 3, 'lista 3 reservas');
     const rD = await postRes('c6', { inicio: '2026-11-01', fim: '2026-11-05', anunciante: 'Parceiro X' });
     assert.equal(rD.status, 201, 'reserva com anunciante próprio criada');
     const varr = await (await fetch(base + '/api/notificacoes/varredura', { method: 'POST', headers: { Authorization: 'Bearer ' + login.token } })).json();
@@ -146,7 +148,7 @@ const server = app.listen(0, async () => {
     const nots = await get('/api/notificacoes');
     assert.ok(nots.some((n) => n.corpo.includes('Reserva de Diniz Fonseca')), 'toast da reserva aparece');
     assert.ok(nots.some((n) => n.corpo.includes('Reserva de Parceiro X')), 'toast usa o anunciante da reserva');
-    for (const id of [rA.json.id, rB.json.id, rD.json.id])
+    for (const id of [rA.json.id, rB.json.id, rC.json.id, rD.json.id])
       assert.equal((await fetch(base + '/api/reservas/' + id, { method: 'DELETE', headers: { Authorization: 'Bearer ' + login.token } })).status, 200, 'reserva excluída');
     // agrupamento: mesmo anunciante + mesmo início = 1 toast com os LEDs
     assert.equal((await ledPost({ codigo: 'TST G1', endereco: 'Rua G1', cidade_id: 'salvador' })).status, 201, 'LED grupo 1');
@@ -167,6 +169,14 @@ const server = app.listen(0, async () => {
     await (await fetch(base + '/api/notificacoes/varredura', { method: 'POST', headers: { Authorization: 'Bearer ' + login.token } })).json();
     const dup = (await get('/api/notificacoes')).filter((n) => n.corpo.includes('Dup X'));
     assert.equal(dup.length, 1, 'nomes com espaços agrupados em 1 toast');
+    // ocupação por cidade calculada por cidade (não só Aracaju)
+    const antesSalv = (await get('/api/dashboard')).ocupacao_por_cidade.find((c) => c.id === 'salvador').valor;
+    assert.equal((await ledPost({ codigo: 'TST O1', endereco: 'Rua O', cidade_id: 'salvador' })).status, 201, 'LED salvador criado');
+    assert.equal((await postCamp({ id: 'cap-o1', cidade_id: 'salvador', led_codigo: 'TST O1', anunciante: 'Ocupante', inicio: '2026-10-01', fim: '2026-10-31' })).status, 201, 'campanha mês cheio');
+    const occ2 = await get('/api/dashboard');
+    assert.ok(occ2.ocupacao_por_cidade.find((c) => c.id === 'salvador').valor > antesSalv, 'salvador reflete o LED novo');
+    await fetch(base + '/api/campanhas/cap-o1', { method: 'DELETE', headers: { Authorization: 'Bearer ' + login.token } });
+    assert.equal((await fetch(base + '/api/leds/TST%20O1', { method: 'DELETE', headers: { Authorization: 'Bearer ' + login.token } })).status, 200, 'LED salvador excluído');
     // menu de cadastro de reservas: lista global + edição + permissão
     const menu = await get('/api/reservas');
     assert.ok(menu.some((r) => r.id === 'r1' && r.cidade_nome === 'Aracaju'), 'menu lista com cidade');

@@ -6,9 +6,13 @@
 cd backend; npm test
 ```
 
-Sobe a API em porta efêmera contra o `data.db` local e valida os contratos da
-spec, **limpando os dados de teste no `finally`** (spots, campanhas `cap-*`/
-`imp-*`, LEDs `TST *` — não polui o banco):
+Sobe a API em porta efêmera contra o banco local e valida os contratos da
+spec, **limpando os dados de teste no `finally`**. Rode **sempre** num banco
+isolado (o smoke cria/exclui dados e exige o seed intacto):
+
+```powershell
+$env:DB_PATH = '.\test-smoke.db'; npm test; Remove-Item .\test-smoke.db
+```
 
 1. `health` + `dashboard` (KPIs, rosca com 3 fatias, Gantt com 4 LEDs);
 2. `planilha` com ≥ 8 campanhas; login admin emite JWT;
@@ -22,22 +26,22 @@ spec, **limpando os dados de teste no `finally`** (spots, campanhas `cap-*`/
    `409`, exclusão de vazio `200`; `GET /api/leds` expõe `espacos_usados/total`;
 10. dashboard separa `a_vencer_lista` (só vencimento) de `a_iniciar_lista`
     (Rede Primavera em iniciar);
-11. importação: 2 válidas + 1 reserva (Reserva1 de Imp A) criadas; 4 ignoradas
-    (LED inexistente, duplicada, data inválida, reserva sobreposta); modelo com
-    colunas de reserva;
+11. importação: 2 válidas + 2 reservas (rotação) criadas; 3 ignoradas
+    (LED inexistente, duplicada, data inválida); modelo com colunas de reserva;
 12. carência de vencimento: fim=ontem → `a_vencer`; fim=anteontem → `vencida`;
 13. acesso por usuário: `/api/me` do admin, criar `teste` (visualizador +
     aracaju + `exportar`), login dele, vínculo respeitado (salvador vazia),
     escrita sem `campanhas_editar` → 403, auto-exclusão `409`, exclusão OK;
-14. reservas múltiplas: 2 criadas (+1 com anunciante próprio e seu toast),
-    sobreposta e dentro-do-período → 409, toast `Reserva de …` verificado,
-    exclusão OK;
+14. reservas múltiplas: 3 criadas em rotação (+1 com anunciante próprio e seu
+    toast), toast `Reserva de …` verificado, exclusão OK;
 15. menu de reservas: lista global com cidade, criar, editar (PUT com novo
     anunciante + filtro `?led=`), excluir; viewer sem `reservas` → 403;
 16. agrupamento de toasts: 2 LEDs com mesmo anunciante+início → 1 toast
     listando ambos; `Dup X`/`Dup X  ` → 1 toast (normalização);
 17. escopo de escrita: regional não cria/altera/exclui fora do vínculo (403),
-    cidade≠cidade do LED → 400.
+    cidade≠cidade do LED → 400;
+18. filtro de cidade fim-a-fim: ocupação calculada por cidade (Salvador vazia
+    = 0, com LED de mês cheio sobe).
 
 ## Checks manuais usados no debug
 
