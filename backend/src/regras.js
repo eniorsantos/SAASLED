@@ -75,6 +75,13 @@ function varreduraNotificacoes(db) {
     cur.leds.push(g.led);
     cur.dias.push(g.dias);
   };
+  const notificar = (campanhaId, evento, titulo, corpo, cidadeId) => {
+    try {
+      db.prepare(`INSERT INTO notificacoes (campanha_id,evento,titulo,corpo,dia,cidade_id) VALUES (?,?,?,?,?,?)`)
+        .run(campanhaId, evento, titulo, corpo, hoje, cidadeId || '');
+      return true;
+    } catch { return false; }
+  };
   const camps = db.prepare('SELECT * FROM campanhas').all();
   for (const c of camps) {
     const anu = normalizarAnunciante(c.anunciante);
@@ -83,18 +90,18 @@ function varreduraNotificacoes(db) {
       push(`venc||${anu}||${c.inicio}`, {
         campanhaId: `grupo:venc:${anu}:${c.inicio}`, evento: 'vencimento',
         titulo: `⚠ Vencimento próximo`, anunciante: anu, tipo: 'venc',
-        led: c.led_codigo, dias: dFim,
+        led: c.led_codigo, dias: dFim, cidade: c.cidade_id,
       });
     if (dIni >= 0 && dIni <= cfg.n_inicio_proximo && c.inicio > hoje)
       push(`ini||${anu}||${c.inicio}`, {
         campanhaId: `grupo:ini:${anu}:${c.inicio}`, evento: 'inicio',
         titulo: `🔔 Início próximo`, anunciante: anu, tipo: 'ini',
-        led: c.led_codigo, dias: dIni,
+        led: c.led_codigo, dias: dIni, cidade: c.cidade_id,
       });
   }
   // Reservas: cada (anunciante, início) gera seu próprio grupo
   const reservas = db.prepare(`
-    SELECT r.*, c.anunciante AS camp_anunciante, c.led_codigo FROM reservas r
+    SELECT r.*, c.anunciante AS camp_anunciante, c.led_codigo, c.cidade_id FROM reservas r
     JOIN campanhas c ON c.id = r.campanha_id`).all();
   for (const r of reservas) {
     const dIni = diasEntre(r.inicio, hoje);
@@ -103,7 +110,7 @@ function varreduraNotificacoes(db) {
       push(`res||${anu}||${r.inicio}`, {
         campanhaId: `grupo:res:${anu}:${r.inicio}`, evento: 'inicio',
         titulo: `🔔 Reserva próxima`, anunciante: anu, tipo: 'res',
-        led: r.led_codigo, dias: dIni,
+        led: r.led_codigo, dias: dIni, cidade: r.cidade_id,
       });
   }
   let criadas = 0;
@@ -119,11 +126,7 @@ function varreduraNotificacoes(db) {
     else
       corpo = `${g.anunciante} inicia em ${g.dias[0]} dias · ${leds}`;
     if (g.leds.length > 1) corpo += ` (${g.leds.length} painéis)`;
-    try {
-      db.prepare(`INSERT INTO notificacoes (campanha_id,evento,titulo,corpo,dia) VALUES (?,?,?,?,?)`)
-        .run(g.campanhaId, g.evento, g.titulo, corpo, hoje);
-      criadas++;
-    } catch { /* duplicada — ignora */ }
+    if (notificar(g.campanhaId, g.evento, g.titulo, corpo, g.cidade)) criadas++;
   }
   return { criadas, hoje };
 }

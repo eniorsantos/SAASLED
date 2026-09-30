@@ -51,6 +51,7 @@ CREATE TABLE IF NOT EXISTS reservas (
 CREATE TABLE IF NOT EXISTS notificacoes (
   id INTEGER PRIMARY KEY AUTOINCREMENT, campanha_id TEXT NOT NULL, evento TEXT NOT NULL,
   titulo TEXT NOT NULL, corpo TEXT NOT NULL, dia TEXT NOT NULL, lida INTEGER NOT NULL DEFAULT 0,
+  cidade_id TEXT NOT NULL DEFAULT '',
   criada_em TEXT NOT NULL DEFAULT (datetime('now')),
   UNIQUE (campanha_id, evento, dia)
 );
@@ -132,6 +133,8 @@ try {
   if (!resCols.includes('anunciante')) db.exec("ALTER TABLE reservas ADD COLUMN anunciante TEXT NOT NULL DEFAULT ''");
   const cfgCols = db.prepare('PRAGMA table_info(config)').all().map((c) => c.name);
   if (!cfgCols.includes('max_clientes_por_led')) db.exec('ALTER TABLE config ADD COLUMN max_clientes_por_led INTEGER NOT NULL DEFAULT 8');
+  const notCols = db.prepare('PRAGMA table_info(notificacoes)').all().map((c) => c.name);
+  if (!notCols.includes('cidade_id')) db.exec("ALTER TABLE notificacoes ADD COLUMN cidade_id TEXT NOT NULL DEFAULT ''");
 } catch {}
 
 module.exports = db;

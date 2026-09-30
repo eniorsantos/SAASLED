@@ -26,7 +26,8 @@ importar, exportar, notificacoes, usuarios, config` (`GET /api/recursos`).
 O admin concede **recursos extras por usuário** (`permissoes`; efetivas =
 padrão do perfil ∪ extras) e vincula **cidades** (`usuario_cidade`, qualquer
 perfil): sem vínculo = todas; com vínculo = só elas (dashboard, campanhas,
-planilha, exports e reservas filtram; fora do vínculo retorna vazio).
+planilha, exports, reservas, LEDs, spots e central filtram; fora do vínculo
+retorna vazio ou 403).
 
 ## Escopo de escrita
 

@@ -139,12 +139,11 @@ app.post('/api/cidades', auth(), podeEditar, (req, res) => {
 });
 
 // — LEDs (menu de cadastro: incluir, editar, excluir) —
-app.get('/api/leds', (req, res) => {
-  const { cidade } = req.query;
+app.get('/api/leds', authOpcional, (req, res) => {
+  const filtro = filtroEfetivo(req);
   const cfg = R.getConfig(db), hoje = R.hojeISO();
-  let rows = cidade
-    ? db.prepare('SELECT * FROM leds WHERE cidade_id = ? ORDER BY codigo').all(cidade)
-    : db.prepare('SELECT * FROM leds ORDER BY codigo').all();
+  let rows = db.prepare('SELECT * FROM leds ORDER BY codigo').all();
+  if (filtro.length) rows = rows.filter((l) => filtro.includes(l.cidade_id));
   res.json(rows.map((l) => ({
     ...l,
     espacos_usados: R.espacosUsados(db, l.codigo, hoje).length,
@@ -292,9 +291,12 @@ function reservasDaCampanha(campanhaId, anunciantePadrao) {
     .map((r) => ({ ...r, anunciante: r.anunciante || anunciantePadrao || '' }));
 }
 // (rotação: reservas convivem com campanha e entre si — sem checagem de choque)
-app.get('/api/campanhas/:id/reservas', (req, res) => {
+app.get('/api/campanhas/:id/reservas', authOpcional, (req, res) => {
   const camp = db.prepare('SELECT * FROM campanhas WHERE id = ?').get(req.params.id);
   if (!camp) return res.status(404).json({ erro: 'campanha não encontrada' });
+  const filtro = filtroEfetivo(req);
+  if (filtro.length && !filtro.includes(camp.cidade_id))
+    return res.status(403).json({ erro: ERRO_ESCOPO });
   res.json(reservasDaCampanha(req.params.id, camp.anunciante));
 });
 app.post('/api/campanhas/:id/reservas', auth(), requer('reservas'), (req, res) => {
@@ -366,12 +368,18 @@ app.put('/api/reservas/:id', auth(), requer('reservas'), (req, res) => {
 });
 
 // — Programação/grade V3 §9.1 (validação anti-sobreposição) —
-app.get('/api/programacoes', (req, res) => {
+app.get('/api/programacoes', authOpcional, (req, res) => {
   const { led, campanha } = req.query;
+  const filtro = filtroEfetivo(req);
   let sql = 'SELECT * FROM programacoes ORDER BY horario_inicio', args = [];
   if (led) { sql = 'SELECT * FROM programacoes WHERE led_codigo = ? ORDER BY horario_inicio'; args = [led]; }
   if (campanha) { sql = 'SELECT * FROM programacoes WHERE campanha_id = ? ORDER BY horario_inicio'; args = [campanha]; }
-  res.json(db.prepare(sql).all(...args));
+  let rows = db.prepare(sql).all(...args);
+  if (filtro.length) {
+    const cid = Object.fromEntries(db.prepare('SELECT codigo,cidade_id FROM leds').all().map((l) => [l.codigo, l.cidade_id]));
+    rows = rows.filter((r) => filtro.includes(cid[r.led_codigo]));
+  }
+  res.json(rows);
 });
 app.post('/api/programacoes', auth(), podeEditar, (req, res) => {
   const { id, campanha_id, led_codigo, horario_inicio, duracao_segundos = 15, dias_semana = 'SEG', insercoes_dia = 1, autorizacao_admin = false, motivo_autorizacao = '' } = req.body || {};
@@ -423,16 +431,21 @@ app.get('/api/dashboard', authOpcional, (req, res) => {
   const aVencer = comSt.filter((c) => { const d = R.diasEntre(c.fim, R.hojeISO()); return d >= -1 && d <= 7 && c.inicio <= R.hojeISO(); }).length;
   const comCampanha = new Set(comSt.filter((c) => c.status !== 'vencida').map((c) => c.led_codigo));
   const livres = Math.max(0, leds.length - comCampanha.size);
+  // Rosca real: campanhas veiculando vs. reservadas + LEDs livres (era fixa 55/25/20)
+  const nVeic = comSt.filter((c) => ['veiculando', 'a_vencer'].includes(c.status)).length;
+  const nRes = comSt.filter((c) => ['agendada', 'reservada'].includes(c.status)).length;
+  const totDist = Math.max(1, nVeic + nRes + livres);
+  const pct = (n) => Math.round((n / totDist) * 100);
+  const distV = [{ name: 'Veiculando', value: pct(nVeic), color: '#2dd4bf' },
+    { name: 'Reservada', value: pct(nRes), color: '#8b7cf6' },
+    { name: 'Livre', value: 0, color: '#3a4468' }];
+  distV[2].value = Math.max(0, 100 - distV[0].value - distV[1].value);
   const cidades = db.prepare('SELECT * FROM cidades').all()
     .filter((c) => filtro.length === 0 || filtro.includes(c.id));
   res.json({
     hoje: R.hojeISO(), periodo: 'Outubro 2026',
     kpis: { ocupacao_media: ocupMedia, leds_ativos: `${leds.length}/${totalLeds}`, a_vencer_7d: aVencer, livres },
-    distribuicao: [
-      { name: 'Veiculando', value: 55, color: '#2dd4bf' },
-      { name: 'Reservada', value: 25, color: '#8b7cf6' },
-      { name: 'Livre', value: 20, color: '#3a4468' },
-    ],
+    distribuicao: distV,
     evolucao_mensal: [
       { mes: 'Mai', ocupacao: 58 }, { mes: 'Jun', ocupacao: 61 }, { mes: 'Jul', ocupacao: 66 },
       { mes: 'Ago', ocupacao: 64 }, { mes: 'Set', ocupacao: 70 }, { mes: 'Out', ocupacao: ocupMedia },
@@ -693,9 +706,11 @@ app.post('/api/import/planilha', auth(), requer('importar'), (req, res) => {
   log(req.user.login, 'planilha.import', `criadas=${criadas.length} reservas=${reservasCriadas} anos_ajustados=${anosAjustados} ignoradas=${ignoradas.length}`);
   res.json({ total: linhas.length - 1, criadas: criadas.length, reservas_criadas: reservasCriadas, anos_ajustados: anosAjustados, ignoradas, ids: criadas });
 });
-app.get('/api/notificacoes', (req, res) => {
-  const rows = db.prepare('SELECT * FROM notificacoes ORDER BY criada_em DESC LIMIT 50').all();
-  res.json(rows.map((n) => ({ id: n.id, titulo: n.titulo, corpo: n.corpo, lida: !!n.lida, evento: n.evento, campanha_id: n.campanha_id })));
+app.get('/api/notificacoes', authOpcional, (req, res) => {
+  const filtro = filtroEfetivo(req);
+  let rows = db.prepare('SELECT * FROM notificacoes ORDER BY criada_em DESC LIMIT 50').all();
+  if (filtro.length) rows = rows.filter((n) => !n.cidade_id || filtro.includes(n.cidade_id));
+  res.json(rows.map((n) => ({ id: n.id, titulo: n.titulo, corpo: n.corpo, lida: !!n.lida, evento: n.evento, campanha_id: n.campanha_id, cidade_id: n.cidade_id || undefined })));
 });
 app.post('/api/notificacoes/varredura', auth(), (req, res) => {
   const r = R.varreduraNotificacoes(db);

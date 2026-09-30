@@ -24,7 +24,7 @@ ignorado pelo git — ver `.gitignore`).
 | `usuarios`       | `login` PK, `senha` (texto — demo), `perfil`, `nome`                                     |
 | `usuario_cidade` | `login` + `cidade_id` (cidades que o usuário pode ver; qualquer perfil; vazio = todas) |
 | `permissoes`     | `login` + `recurso` (extras além do padrão do perfil; efetivas = padrão ∪ extras)      |
-| `notificacoes`   | `campanha_id` (id de campanha, de reserva ou `grupo:<evento>:<anunciante>:<data>`), `evento` (`vencimento`/`inicio`), `titulo`, `corpo`, `dia`, `lida`, `criada_em` — UNIQUE (`campanha_id`,`evento`,`dia`) = anti-duplicidade §4.1 |
+| `notificacoes`   | `campanha_id` (id de campanha, de reserva ou `grupo:<evento>:<anunciante>:<data>`), `evento` (`vencimento`/`inicio`), `titulo`, `corpo`, `dia`, `lida`, `cidade_id` (escopo da central), `criada_em` — UNIQUE (`campanha_id`,`evento`,`dia`) = anti-duplicidade §4.1 |
 | `auditoria`      | `quando`, `quem`, `oque`, `detalhe` — quem/o quê/quando §9.2                             |
 
 ## Seed (dataset inicial)

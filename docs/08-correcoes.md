@@ -185,3 +185,9 @@ ormalizarAnunciante() em todas as escritas e nas chaves de grupo (Dup X = Dup X 
 ## Gantt mostra todas as campanhas
 
 - Vencidas sumiam da faixa e o LED parecia vazio: agora cada campanha tem bloco com nome (teal veiculando, roxo reservada, apagado encerrada) e LIVRE so no restante.
+
+## Auditoria 3 - rosca real e escopo de leitura
+
+- **Rosca fixa**: donut era 55/25/20 chumbado com dados reais; agora % de veiculando/reservadas/livres (soma 100).
+- **Leituras sem escopo**: GET /api/leds, reservas aninhadas, programacoes e central ignoravam o vinculo. Agora filtram/403; notificacoes ganharam cidade_id (migracao).
+- **Smoke**: item 19.

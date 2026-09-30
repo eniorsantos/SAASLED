@@ -1,4 +1,4 @@
-// Smoke test: sobe a API em memória e valida os contratos da spec.
+﻿// Smoke test: sobe a API em memória e valida os contratos da spec.
 const assert = require('assert');
 const app = require('../src/index');
 const server = app.listen(0, async () => {
@@ -161,6 +161,18 @@ const server = app.listen(0, async () => {
     const grupo = (await get('/api/notificacoes')).filter((n) => n.corpo.includes('Grupo X'));
     assert.equal(grupo.length, 1, '1 toast para o grupo');
     assert.ok(grupo[0].corpo.includes('TST G1') && grupo[0].corpo.includes('TST G2'), 'toast lista os LEDs');
+    assert.equal(grupo[0].cidade_id, 'salvador', 'toast carrega a cidade (escopo da central)');
+    const regTokEscopo = (await (await fetch(base + '/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ login: 'regional', senha: 'reg123' }) })).json()).token;
+    // escopo de leitura: LEDs, reservas aninhadas e central respeitam o vínculo
+    const regLeds = await get('/api/leds', regTokEscopo);
+    assert.ok(regLeds.length > 0 && regLeds.every((l) => l.cidade_id === 'aracaju'), 'LEDs filtrados pelo vínculo');
+    assert.equal((await ledPost({ codigo: 'TST SC', endereco: 'Rua SC', cidade_id: 'salvador' })).status, 201, 'LED salvador p/ escopo');
+    assert.equal((await postCamp({ id: 'cap-sc1', cidade_id: 'salvador', led_codigo: 'TST SC', anunciante: 'SC', inicio: '2026-11-01', fim: '2026-12-01' })).status, 201, 'campanha salvador');
+    assert.equal((await fetch(base + '/api/campanhas/cap-sc1/reservas', { headers: { Authorization: 'Bearer ' + regTokEscopo } })).status, 403, 'reserva aninhada fora do escopo bloqueada');
+    const notsReg = await get('/api/notificacoes', regTokEscopo);
+    assert.ok(notsReg.every((n) => !n.cidade_id || n.cidade_id === 'aracaju'), 'central filtrada pelo vínculo');
+    await fetch(base + '/api/campanhas/cap-sc1', { method: 'DELETE', headers: { Authorization: 'Bearer ' + login.token } });
+    assert.equal((await fetch(base + '/api/leds/TST%20SC', { method: 'DELETE', headers: { Authorization: 'Bearer ' + login.token } })).status, 200, 'limpeza escopo');
     // normalização: 'Dup X' e 'Dup X  ' (espaços) agrupam no mesmo toast
     for (const [cid, anu] of [['cap-d1', 'Dup X'], ['cap-d2', 'Dup X  ']]) {
       const r = await postCamp({ id: cid, cidade_id: 'salvador', led_codigo: cid === 'cap-d1' ? 'TST G1' : 'TST G2', anunciante: anu, inicio: '2026-11-01', fim: '2026-12-01' });

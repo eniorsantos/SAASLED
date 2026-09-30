@@ -23,7 +23,8 @@ Topbar (brand, LIVE, 4 KPIs, filtro, período, botões **📺 LEDs**, **🗓️ 
 Ocupação por LED (Gantt com **um bloco por campanha, com o nome** — veiculando
 em teal, `RESERVADA · NOME` em roxo, `ENCERRADA · NOME` apagado — e LIVRE só no
 restante; tooltip com período e status; **selo `x/8 espaços`** por painel) ·
-Distribuição por status (rosca Recharts) · Ocupação por cidade (barras) · A vencer (só `a_vencer`) + **A iniciar**
+Distribuição por status (rosca Recharts com % reais: veiculando vs. reservadas
+vs. livres) · Ocupação por cidade (barras) · A vencer (só `a_vencer`) + **A iniciar**
 (`agendada` + reservas próximas, com estados vazios próprios) ·
 Abas **Dashboard / Visualizar como planilha / Gráficos / Reservas** (rosca→linha
 e barras Recharts na aba Gráficos) · footer com latência medida do fetch.

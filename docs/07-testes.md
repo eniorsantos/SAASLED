@@ -41,7 +41,9 @@ $env:DB_PATH = '.\test-smoke.db'; npm test; Remove-Item .\test-smoke.db
 17. escopo de escrita: regional não cria/altera/exclui fora do vínculo (403),
     cidade≠cidade do LED → 400;
 18. filtro de cidade fim-a-fim: ocupação calculada por cidade (Salvador vazia
-    = 0, com LED de mês cheio sobe).
+    = 0, com LED de mês cheio sobe);
+19. rosca com % reais; LEDs, reservas aninhadas, spots e central com escopo
+    (regional só vê Aracaju; toast com `cidade_id`).
 
 ## Checks manuais usados no debug
 

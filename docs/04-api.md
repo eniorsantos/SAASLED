@@ -23,7 +23,7 @@ Legenda de auth: 🔓 pública · 🔑 login · ✏️ admin/regional/operador �
 | Método | Rota | Auth | Query/Body |
 |--------|------|------|------------|
 | GET/POST | `/api/cidades` | 🔓/✏️ | POST: `{id, nome, uf?, fuso?}` |
-| GET | `/api/leds?cidade=` | 🔓 | cada LED traz `espacos_usados/espacos_total` (8 por padrão) |
+| GET | `/api/leds?cidade=` | 🔓 (+escopo) | cada LED traz `espacos_usados/espacos_total` (8 por padrão) |
 | POST | `/api/leds` | `leds` | `{codigo, endereco, cidade_id}`; 400 cidade inexistente · 409 código duplicado |
 | PUT | `/api/leds/:codigo` | `leds` | `{endereco?, cidade_id?, novo_codigo?}`; renomear move campanhas+spots (transação) |
 | DELETE | `/api/leds/:codigo` | `leds` | 409 se houver campanhas; 404 se inexistente |
@@ -37,7 +37,7 @@ Legenda de auth: 🔓 pública · 🔑 login · ✏️ admin/regional/operador �
 | POST | `/api/campanhas` | `campanhas_editar` | `{id, cidade_id, led_codigo, anunciante, inicio, fim, reservada?}`; 400 p/ data inválida, `inicio>fim`, LED inexistente ou cidade≠cidade do LED · **409 LED lotado** (`{usados,total}`, 8 espaços) · 403 fora do escopo |
 | PUT | `/api/campanhas/:id` | `campanhas_editar` | edição parcial (usada pelo inline da planilha); troca de LED/anunciante revalida a lotação (ignorando a própria campanha) |
 | DELETE | `/api/campanhas/:id` | `campanhas_editar` | - |
-| GET | `/api/campanhas/:id/reservas` | 🔓 | N períodos futuros (cada um com seu `anunciante`) |
+| GET | `/api/campanhas/:id/reservas` | 🔓 (+escopo: 403 fora do vínculo) | N períodos futuros (cada um com seu `anunciante`) |
 | POST | `/api/campanhas/:id/reservas` | `reservas` | `{inicio, fim, anunciante?}` (vazio = o da campanha); rotação sem choque; cada reserva notifica o início (doc 03 §3.8) |
 | GET | `/api/reservas` | 🔓 (+escopo) | menu global: `?cidades=`, `?led=`, `?campanha_id=`; cada item traz `anunciante`, `led_codigo`, `cidade_id/nome` |
 | PUT | `/api/reservas/:id` | `reservas` | `{inicio?, fim?, anunciante?}` com as mesmas validações do POST (ignorando a própria) |
@@ -47,7 +47,7 @@ Legenda de auth: 🔓 pública · 🔑 login · ✏️ admin/regional/operador �
 
 | Método | Rota | Auth | Detalhes |
 |--------|------|------|----------|
-| GET | `/api/programacoes` | 🔓 | `?led=` e/ou `?campanha=` |
+| GET | `/api/programacoes` | 🔓 (+escopo) | `?led=` e/ou `?campanha=` |
 | POST | `/api/programacoes` | ✏️ | `{id, campanha_id, led_codigo, horario_inicio, duracao_segundos?, dias_semana?, insercoes_dia?, autorizacao_admin?, motivo_autorizacao?}`; 400 validação · 403 choque sem poder de admin · 409 choque aguardando confirmação admin (`requer_autorizacao_admin: true` + `choque`) · 201 `{ok, id, autorizada_por?}` |
 
 ## Dashboard / planilha / exportação (§8.2, §4.4, §8.3)
@@ -65,7 +65,7 @@ Legenda de auth: 🔓 pública · 🔑 login · ✏️ admin/regional/operador �
 
 | Método | Rota | Auth | Detalhes |
 |--------|------|------|----------|
-| GET | `/api/notificacoes` | 🔓 | últimas 50 `{id, titulo, corpo, lida, evento, campanha_id}` |
+| GET | `/api/notificacoes` | 🔓 (+escopo: filtra por `cidade_id`) | últimas 50 `{..., cidade_id?}` |
 | POST | `/api/notificacoes/varredura` | 🔑 | executa a varredura sob demanda → `{criadas, hoje}` |
 | PATCH | `/api/notificacoes/:id/lida` | 🔑 | marca como lida |
 | GET | `/api/auditoria` | 👑 | últimas 100 linhas `{quando, quem, oque, detalhe}` |
