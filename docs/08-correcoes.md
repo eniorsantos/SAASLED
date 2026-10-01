@@ -209,3 +209,22 @@ ormalizarAnunciante() em todas as escritas e nas chaves de grupo (Dup X = Dup X 
 
 - **Causas**: (1) sem nunciante na notificacao (back antigo ou caso nao resolvido), o botao ia a planilha sem buscar nada; (2) com permissao ainda carregando (me=null), o clique desviava para o Dashboard ou caia em aba vazia.
 - **Correcao**: extracao do nome do texto do toast como fallback; sem permissao carregada nao desvia; abas/planilha liberadas no modo offline (antes o fallback offline era inalcançavel).
+
+## Filtro de cidade em tudo
+
+- Faltava escopo em LEDs, reservas, toasts e selects (filtros mostravam outras cidades). Agora GET /api/leds|reservas|notificacoes aceitam ?cidades=, o front propaga o filtro, trocar de cidade limpa LED/toasts, e o modal de campanha lista só LEDs da cidade.
+
+## Menu de Cidades + janela de edição de reserva
+
+- **Cidades**: recurso cidades (12 no catálogo; regional/operador por padrão); PUT (nome/UF/fuso, id fixo) e DELETE (409 com LEDs) novos; POST migrado para o recurso; menu topbar no padrão.
+- **Reservas**: Editar abre janela independente (campanha de contexto + anunciante + período); formulário da aba/janela ficou só de criação.
+
+## Editar reserva em primeiro plano + fechar todas
+
+- Edicao de reserva virou janela propria por ultimo na ordem (z-index 70, acima de todas) em vez de bloco embutido.
+- Botao echar todas no topo da pilha de toasts dispensa as visiveis de uma vez (sesso local, voltam no refresh).
+
+## Banco nasce vazio + restauracao apos delecao acidental
+
+- Deploy cria banco VAZIO por padrao; SEED=true popula o demo; config garantida em todo boot (sem ela, o POST de campanha quebrava com cfg undefined); admin de resgate criado so se nao houver usuarios.
+- **Incidente**: comando de verificacao apagou data.db por engano; restaurado 100% (6 cidades + 32 LEDs recadastrados via API e reimport do CSV: 179/76).

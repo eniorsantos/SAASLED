@@ -22,7 +22,9 @@ Legenda de auth: 🔓 pública · 🔑 login · ✏️ admin/regional/operador �
 
 | Método | Rota | Auth | Query/Body |
 |--------|------|------|------------|
-| GET/POST | `/api/cidades` | 🔓/✏️ | POST: `{id, nome, uf?, fuso?}` |
+| GET/POST | `/api/cidades` | 🔓/`cidades` | POST: `{id, nome, uf?, fuso?}`; 409 id duplicado |
+| PUT | `/api/cidades/:id` | `cidades` | `{nome?, uf?, fuso?}` (id não renomeia) |
+| DELETE | `/api/cidades/:id` | `cidades` | 409 se houver LEDs; limpa vínculos |
 | GET | `/api/leds?cidade=` | 🔓 (+escopo) | cada LED traz `espacos_usados/espacos_total` (8 por padrão) |
 | POST | `/api/leds` | `leds` | `{codigo, endereco, cidade_id}`; 400 cidade inexistente · 409 código duplicado |
 | PUT | `/api/leds/:codigo` | `leds` | `{endereco?, cidade_id?, novo_codigo?}`; renomear move campanhas+spots (transação) |
@@ -75,7 +77,7 @@ Legenda de auth: 🔓 pública · 🔑 login · ✏️ admin/regional/operador �
 | Método | Rota | Auth | Detalhes |
 |--------|------|------|----------|
 | GET | `/api/me` | 🔑 | `{login, perfil, nome, cidades[], permissoes[] (extras), efetivas[]}` — o front usa para exibir/esconder módulos |
-| GET | `/api/recursos` | 🔑 | catálogo `{id, rotulo}` (11: dashboard, planilha, graficos, leds, campanhas_editar, reservas, importar, exportar, notificacoes, usuarios, config) |
+| GET | `/api/recursos` | 🔑 | catálogo `{id, rotulo}` (12: dashboard, planilha, graficos, leds, cidades, campanhas_editar, reservas, importar, exportar, notificacoes, usuarios, config) |
 | GET | `/api/usuarios` | `usuarios` | lista com cidades + permissões + efetivas |
 | POST | `/api/usuarios` | `usuarios` | `{login, senha, perfil?, nome?, cidades[]?, permissoes[]?}`; 409 login duplicado |
 | PUT | `/api/usuarios/:login` | `usuarios` | senha (vazio mantém), perfil, nome, `cidades[]` e `permissoes[]` substituem; 409 ao rebaixar o último admin |

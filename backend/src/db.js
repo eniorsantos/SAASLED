@@ -108,17 +108,24 @@ function seed() {
   ]);
 }
 
-// Seed desligável: SEED=false pula o seed (banco gerenciado manualmente).
-// Como criar usuário exige login, garante-se um admin de resgate.
-if (process.env.SEED === 'false' || process.env.SEED === '0') {
-  db.prepare("INSERT OR IGNORE INTO usuarios (login,senha,perfil,nome) VALUES ('admin','admin123','admin','Administrador')").run();
-} else {
+// Seed opt-in: na implantação o banco nasce VAZIO (não populado).
+// SEED=true popula com o dataset demo (inclui o admin).
+// Admin de resgate: garantido na criação do banco SEMPRE que não houver nenhum
+// usuário — banco novo, limpezas ou SEED parcial (cidades sem usuários). Sem ele
+// o login seria impossível, pois criar usuário exige estar logado.
+// A linha de config (limites padrão) sempre existe, com ou sem seed.
+db.prepare('INSERT OR IGNORE INTO config (id) VALUES (1)').run();
+if (process.env.SEED === 'true' || process.env.SEED === '1') {
   seed();
+}
+if (db.prepare('SELECT COUNT(*) v FROM usuarios').get().v === 0) {
+  db.prepare("INSERT INTO usuarios (login,senha,perfil,nome) VALUES ('admin','admin123','admin','Administrador')").run();
+  console.log('admin de resgate criado (admin/admin123 — troque a senha)');
 }
 
 // Seed aditivo: garante a reserva-exemplo mesmo em bancos criados antes dela
-// (só com seed ligado; com SEED=false o banco permanece vazio)
-if (process.env.SEED !== 'false' && process.env.SEED !== '0') {
+// (só com seed ligado; sem SEED o banco permanece como está)
+if (process.env.SEED === 'true' || process.env.SEED === '1') {
   try {
     db.prepare("INSERT OR IGNORE INTO reservas (id,campanha_id,inicio,fim,anunciante,criada_por) VALUES ('r1','c5','2027-02-01','2027-02-28','Jardins Delicatessen','admin')").run();
   } catch {}

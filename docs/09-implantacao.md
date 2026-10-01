@@ -115,9 +115,9 @@ Aviso `chunk > 500 kB` do Recharts é esperado e inofensivo.
 
 1. Terminal 1: `cd backend; npm start` · Terminal 2: `cd frontend; npm run dev`.
 2. Parar: `Ctrl+C` nos dois.
-3. Resetar o banco: pare a API, apague `backend/data.db`, suba de novo (seed recria).
-   Para **manter o banco vazio**, suba sempre com `SEED=false` (`$env:SEED='false'; npm start`) —
-   nesse modo só existe o admin de resgate (`admin/admin123`); para voltar ao seed, suba sem a variável.
+3. Resetar o banco: pare a API, apague `backend/data.db`, suba de novo — nasce
+   vazio (só admin de resgate). Para o dataset demo, suba uma vez com
+   `SEED=true` (`$env:SEED='true'; npm start`).
 4. Backup do banco: copie `backend/data.db` (com a API parada).
 
 ## A.5 Problemas locais comuns

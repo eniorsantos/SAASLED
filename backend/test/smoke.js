@@ -1,6 +1,7 @@
-﻿// Smoke relativo ao período do seed: fixa o "hoje" em Out-2026
-// (produção usa a data real; ver HOJE em docs/01)
+﻿// Smoke com dataset demo: fixa o "hoje" em Out-2026 e liga o SEED
+// (produção nasce vazia, sem SEED, e usa a data real; ver docs/01)
 process.env.HOJE = '2026-10-25';
+process.env.SEED = 'true';
 // Smoke test: sobe a API em memória e valida os contratos da spec.
 const assert = require('assert');
 const app = require('../src/index');
@@ -17,6 +18,8 @@ const server = app.listen(0, async () => {
     assert.ok(Array.isArray(dash.gantt_por_led) && dash.gantt_por_led.length === 4, 'gantt 4 leds');
     assert.ok(dash.ocupacao_por_cidade.find((c) => c.id === 'aracaju').valor > 0, 'aracaju com ocupação real');
     assert.equal(dash.ocupacao_por_cidade.find((c) => c.id === 'salvador').valor, 0, 'salvador sem LEDs = 0');
+    const ledsAr = await get('/api/leds?cidades=aracaju');
+    assert.ok(ledsAr.length === 4 && ledsAr.every((l) => l.cidade_id === 'aracaju'), 'LEDs filtrados por cidade');
     const plan = await get('/api/planilha');
     assert.ok(plan.length >= 8, 'planilha >= 8 campanhas');
     const login = await (await fetch(base + '/api/auth/login', {
@@ -112,6 +115,19 @@ const server = app.listen(0, async () => {
     const leds = await get('/api/leds');
     const aju01 = leds.find((l) => l.codigo === 'AJU 01');
     assert.ok(aju01 && aju01.espacos_total === 8 && aju01.espacos_usados === 2, 'LED expõe x/8 espaços');
+    // CRUD de cidades (id, nome, UF, fuso)
+    const cidPost = (b) => fetch(base + '/api/cidades', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + login.token },
+      body: JSON.stringify(b),
+    }).then(async (r) => ({ status: r.status, json: await r.json().catch(() => ({})) }));
+    assert.equal((await cidPost({ id: 'tstc', nome: 'Teste City', uf: 'TC' })).status, 201, 'cidade incluída');
+    assert.equal((await cidPost({ id: 'tstc', nome: 'Dup', uf: 'TC' })).status, 409, 'cidade duplicada rejeitada');
+    assert.equal((await fetch(base + '/api/cidades/tstc', { method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + login.token },
+      body: JSON.stringify({ nome: 'Teste City 2' }) })).status, 200, 'cidade editada');
+    assert.ok((await get('/api/cidades')).some((c) => c.id === 'tstc' && c.nome === 'Teste City 2'), 'edição persistiu');
+    assert.equal((await fetch(base + '/api/cidades/aracaju', { method: 'DELETE', headers: { Authorization: 'Bearer ' + login.token } })).status, 409, 'exclusão com LEDs bloqueada');
+    assert.equal((await fetch(base + '/api/cidades/tstc', { method: 'DELETE', headers: { Authorization: 'Bearer ' + login.token } })).status, 200, 'cidade vazia excluída');
     // controle de acesso por usuário: CRUD + visibilidade + enforcement
     const me = await get('/api/me', login.token);
     assert.ok(me.efetivas.includes('usuarios'), 'admin enxerga tudo');

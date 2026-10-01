@@ -35,11 +35,24 @@ export const api = {
   dashboard: (cidades: string) => req<Dashboard>(`/api/dashboard${cidades ? `?cidades=${cidades}` : ''}`),
   planilha: (cidades: string, q = '', status = '') =>
     req<PlanilhaRow[]>(`/api/planilha?cidades=${cidades}&q=${encodeURIComponent(q)}${status ? `&status=${status}` : ''}`),
-  notificacoes: () => req<Notif[]>('/api/notificacoes'),
+  notificacoes: (cidades = '') => req<Notif[]>(`/api/notificacoes${cidades ? `?cidades=${cidades}` : ''}`),
   marcarLida: (id: number) =>
     req('/api/notificacoes/' + id + '/lida', { method: 'PATCH' }).catch(() => null as any),
   cidades: () => req<{ id: string; nome: string; uf: string }[]>('/api/cidades'),
-  leds: () => req<any[]>('/api/leds'),
+  criarCidade: async (body: any): Promise<{ status: number; body: any }> => {
+    const token = localStorage.getItem('led_token');
+    const r = await fetch(API + '/api/cidades', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      body: JSON.stringify(body),
+    });
+    return { status: r.status, body: await r.json().catch(() => ({})) };
+  },
+  editarCidade: (id: string, body: any) =>
+    req('/api/cidades/' + encodeURIComponent(id), { method: 'PUT', body: JSON.stringify(body) }),
+  excluirCidade: (id: string) =>
+    req('/api/cidades/' + encodeURIComponent(id), { method: 'DELETE' }),
+  leds: (cidades = '') => req<any[]>(`/api/leds${cidades ? `?cidades=${cidades}` : ''}`),
   criarLed: async (body: any): Promise<{ status: number; body: any }> => {
     const token = localStorage.getItem('led_token');
     const r = await fetch(API + '/api/leds', {
@@ -69,7 +82,7 @@ export const api = {
   criarReserva: (campanhaId: string, body: any) =>
     req(`/api/campanhas/${campanhaId}/reservas`, { method: 'POST', body: JSON.stringify(body) }),
   excluirReserva: (id: string) => req('/api/reservas/' + id, { method: 'DELETE' }),
-  listarReservas: (q = '') => req<any[]>(`/api/reservas${q ? `?${q}` : ''}`),
+  listarReservas: (cidades = '') => req<any[]>(`/api/reservas${cidades ? `?cidades=${cidades}` : ''}`),
   editarReserva: (id: string, body: any) =>
     req('/api/reservas/' + id, { method: 'PUT', body: JSON.stringify(body) }),
   modeloImportUrl: `${API}/api/import/modelo.csv`,

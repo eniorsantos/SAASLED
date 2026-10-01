@@ -27,10 +27,13 @@ ignorado pelo git — ver `.gitignore`).
 | `notificacoes`   | `campanha_id` (id de campanha, de reserva ou `grupo:<evento>:<anunciante>:<data>`), `evento` (`vencimento`/`inicio`), `titulo`, `corpo`, `dia`, `lida`, `cidade_id` (escopo da central), `criada_em` — UNIQUE (`campanha_id`,`evento`,`dia`) = anti-duplicidade §4.1 |
 | `auditoria`      | `quando`, `quem`, `oque`, `detalhe` — quem/o quê/quando §9.2                             |
 
-## Seed (dataset inicial)
+## Seed (dataset demo, opt-in)
 
-`SEED=false` pula o seed (e garante só o admin de resgate). Seed normal,
-idempotente (`INSERT OR IGNORE` — pode rodar sobre banco existente sem erro):
+`SEED=true` popula na criação (inclui o admin); sem ele o banco nasce vazio.
+Em qualquer caso, se não houver **nenhum** usuário (banco novo, limpezas ou
+SEED parcial), cria-se o admin de resgate `admin/admin123`. Seed idempotente
+(`INSERT OR IGNORE`); a linha de
+`config` é garantida em todo boot, com ou sem seed:
 
 - Cidades: `aracaju` (Aracaju/SE), `salvador` (Salvador/BA, sem LEDs — mostra o estado vazio multi-cidade).
 - LEDs: AJU 01 Silvio Teixeira · AJU 02 Tancredo Neves · AJU 03 Adélia Franco · AJU 04 Francisco Porto.

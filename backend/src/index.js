@@ -43,6 +43,7 @@ const RECURSOS = [
   { id: 'planilha', rotulo: 'Planilha' },
   { id: 'graficos', rotulo: 'Gráficos' },
   { id: 'leds', rotulo: 'Gerenciar LEDs' },
+  { id: 'cidades', rotulo: 'Cadastrar cidades' },
   { id: 'campanhas_editar', rotulo: 'Editar campanhas' },
   { id: 'reservas', rotulo: 'Cadastro de reservas' },
   { id: 'importar', rotulo: 'Importar planilha' },
@@ -53,8 +54,8 @@ const RECURSOS = [
 ];
 const PERFIL_DEFAULT = {
   admin: RECURSOS.map((r) => r.id),
-  regional: ['dashboard', 'planilha', 'graficos', 'leds', 'campanhas_editar', 'reservas', 'importar', 'exportar', 'notificacoes'],
-  operador: ['dashboard', 'planilha', 'graficos', 'leds', 'campanhas_editar', 'reservas', 'notificacoes'],
+  regional: ['dashboard', 'planilha', 'graficos', 'leds', 'cidades', 'campanhas_editar', 'reservas', 'importar', 'exportar', 'notificacoes'],
+  operador: ['dashboard', 'planilha', 'graficos', 'leds', 'cidades', 'campanhas_editar', 'reservas', 'notificacoes'],
   visualizador: ['dashboard', 'planilha', 'graficos', 'notificacoes'],
 };
 function permissoesEfetivas(login, perfil) {
@@ -130,12 +131,33 @@ app.put('/api/config', auth(), requer('config'), (req, res) => {
 
 // — Cidades (§8.1 CRUD: nome, UF, fuso) —
 app.get('/api/cidades', (req, res) => res.json(db.prepare('SELECT * FROM cidades ORDER BY nome').all()));
-app.post('/api/cidades', auth(), podeEditar, (req, res) => {
+app.post('/api/cidades', auth(), requer('cidades'), (req, res) => {
   const { id, nome, uf = '', fuso = 'America/Maceio' } = req.body || {};
   if (!id || !nome) return res.status(400).json({ erro: 'id e nome obrigatórios' });
-  db.prepare('INSERT INTO cidades (id,nome,uf,fuso) VALUES (?,?,?,?)').run(id, nome, uf, fuso);
+  try {
+    db.prepare('INSERT INTO cidades (id,nome,uf,fuso) VALUES (?,?,?,?)').run(String(id).trim().toLowerCase(), nome, uf, fuso);
+  } catch { return res.status(409).json({ erro: `cidade "${id}" já cadastrada` }); }
   log(req.user.login, 'cidade.create', id);
   res.status(201).json({ id, nome, uf, fuso });
+});
+app.put('/api/cidades/:id', auth(), requer('cidades'), (req, res) => {
+  const cur = db.prepare('SELECT * FROM cidades WHERE id = ?').get(req.params.id);
+  if (!cur) return res.status(404).json({ erro: 'cidade não encontrada' });
+  const { nome = cur.nome, uf = cur.uf, fuso = cur.fuso } = req.body || {};
+  if (!nome) return res.status(400).json({ erro: 'nome obrigatório' });
+  db.prepare('UPDATE cidades SET nome = ?, uf = ?, fuso = ? WHERE id = ?').run(nome, uf, fuso, req.params.id);
+  log(req.user.login, 'cidade.update', req.params.id);
+  res.json({ ok: true });
+});
+app.delete('/api/cidades/:id', auth(), requer('cidades'), (req, res) => {
+  const cur = db.prepare('SELECT * FROM cidades WHERE id = ?').get(req.params.id);
+  if (!cur) return res.status(404).json({ erro: 'cidade não encontrada' });
+  const n = db.prepare('SELECT COUNT(*) v FROM leds WHERE cidade_id = ?').get(req.params.id).v;
+  if (n > 0) return res.status(409).json({ erro: `cidade possui ${n} LED(s) — exclua ou transfira antes` });
+  db.prepare('DELETE FROM usuario_cidade WHERE cidade_id = ?').run(req.params.id);
+  db.prepare('DELETE FROM cidades WHERE id = ?').run(req.params.id);
+  log(req.user.login, 'cidade.delete', req.params.id);
+  res.json({ ok: true });
 });
 
 // — LEDs (menu de cadastro: incluir, editar, excluir) —

@@ -116,6 +116,9 @@ tr.destaque td{background:rgba(45,212,191,.14);animation:piscar 1s ease-in-out 3
 .login-card input{width:100%;background:var(--panel2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:9px 12px;margin:6px 0;font-size:.85rem}
 .login-card button{width:100%;background:linear-gradient(135deg,var(--teal),var(--blue));border:0;border-radius:8px;padding:10px;font-weight:700;cursor:pointer;margin-top:8px}
 .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:30;padding:16px;overflow-y:auto}
+.modal-fg{z-index:70}
+.toasts-close{align-self:flex-end;background:var(--panel2);border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:4px 12px;font-size:.7rem;cursor:pointer}
+.toasts-close:hover{color:var(--red);border-color:var(--red)}
 .modal{width:945px;max-width:calc(100vw - 32px);max-height:calc(100vh - 32px);overflow-y:auto}
 .modal input,.modal select{width:100%;background:var(--panel2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:8px 10px;margin:5px 0;font-size:.8rem}
 footer{color:var(--muted);font-size:.7rem;display:flex;justify-content:space-between;padding:14px 4px;flex-wrap:wrap;gap:8px}

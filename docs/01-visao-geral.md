@@ -63,7 +63,7 @@ Variáveis de ambiente:
 | `JWT_SECRET`   | back-end | `led-control-dev`   | assinatura dos tokens (trocar em prod) |
 | `DB_PATH`        | back-end | `backend/data.db`   | caminho do SQLite (em nuvem: apontar p/ disco persistente — doc 09) |
 | `HOJE`         | back-end | (data real)         | "hoje" lógico; fixe (`2026-10-25`) só p/ simular/testar |
-| `SEED`         | back-end | (ligado)            | `false` pula o seed (banco vazio gerenciado à mão; garante só o admin de resgate `admin/admin123`) |
+| `SEED`         | back-end | (vazio)             | `true` popula o dataset demo na criação; sem seed, só o admin de resgate (se não houver usuários) |
 | `VITE_API_URL` | front    | `""` (usa proxy)    | base da API quando sem proxy    |
 
 ## Convenções importantes

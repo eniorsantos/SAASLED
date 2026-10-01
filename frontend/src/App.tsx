@@ -115,11 +115,18 @@ export default function App() {
   const [resListaG, setResListaG] = useState<any[]>([]);
   const [resCamps, setResCamps] = useState<any[]>([]);
   const [resFormG, setResFormG] = useState({ campanha_id: '', anunciante: '', inicio: '2026-12-01', fim: '2026-12-31' });
-  const [resEditG, setResEditG] = useState<string | null>(null);
+  // Janela independente de edição de reserva (a criação fica no formulário)
+  const [resEditM, setResEditM] = useState<{ id: string; campLabel: string; anunciante: string; inicio: string; fim: string } | null>(null);
+  const [resMsgM, setResMsgM] = useState<{ tipo: 'ok' | 'erro'; texto: string } | null>(null);
   const [resMsgG, setResMsgG] = useState<{ tipo: 'ok' | 'erro'; texto: string } | null>(null);
   const [ledForm, setLedForm] = useState({ codigo: '', endereco: '', cidade_id: 'aracaju' });
   const [ledEditando, setLedEditando] = useState<string | null>(null);
   const [ledMsg, setLedMsg] = useState<{ tipo: 'ok' | 'erro'; texto: string } | null>(null);
+  // Menu de cadastro de cidades (id, nome, UF, fuso — padrão do banco)
+  const [cidMenu, setCidMenu] = useState(false);
+  const [cidForm, setCidForm] = useState({ id: '', nome: '', uf: '', fuso: 'America/Maceio' });
+  const [cidEditando, setCidEditando] = useState<string | null>(null);
+  const [cidMsg, setCidMsg] = useState<{ tipo: 'ok' | 'erro'; texto: string } | null>(null);
 
   const carregar = useCallback(async () => {
     const t0 = performance.now();
@@ -127,9 +134,9 @@ export default function App() {
       const [d, p, n, cids, leds] = await Promise.all([
         api.dashboard(cidade),
         api.planilha(cidade).catch(() => [] as PlanilhaRow[]),
-        api.notificacoes().catch(() => [] as Notif[]),
+        api.notificacoes(cidade).catch(() => [] as Notif[]),
         api.cidades().catch(() => [] as { id: string; nome: string; uf: string }[]),
-        api.leds().catch(() => [] as any[]),
+        api.leds(cidade).catch(() => [] as any[]),
       ]);
       const m = await api.me().catch(() => null);
       setDash(d); setOnline(true);
@@ -167,6 +174,13 @@ export default function App() {
 
   const trocarCidade = (v: string) => {
     setCidade(v);
+    setDismissed([]);
+    // LED selecionado fora da cidade sai da seleção
+    if (ledSel) {
+      const todos = [...ledsLista, ...dash.gantt_por_led];
+      const led = todos.find((l: any) => l.codigo === ledSel);
+      if (led && v && led.cidade_id !== v) setLedSel(null);
+    }
     const u = new URL(location.href);
     if (!v) u.searchParams.delete('cidades'); else u.searchParams.set('cidades', v);
     history.replaceState({}, '', u);
@@ -349,14 +363,14 @@ export default function App() {
   // Aba de reservas: carrega lista global + campanhas ao abrir
   const carregarAbaReservas = useCallback(async () => {
     try {
-      const [lista, camps] = await Promise.all([api.listarReservas(), api.campanhas()]);
+      const [lista, camps] = await Promise.all([api.listarReservas(cidade), api.campanhas()]);
       setResListaG(lista); setResCamps(camps);
       if (camps.length) setResFormG((f) => (f.campanha_id ? f : { ...f, campanha_id: camps[0].id }));
     } catch (e: any) { setResMsgG({ tipo: 'erro', texto: e.message }); }
-  }, []);
+  }, [cidade]);
   useEffect(() => {
     if (tab === 'reservas' && can('reservas')) carregarAbaReservas();
-  }, [tab, me]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [tab, me, cidade]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Menu global de reservas: lista tudo + criar/editar/excluir
   const [resModal, setResModal] = useState(false);
@@ -371,7 +385,7 @@ export default function App() {
                 <td><b>{r.anunciante}</b></td><td>{r.led_codigo}</td><td>{r.cidade_nome}</td>
                 <td>{br(r.inicio)}</td><td>{br(r.fim)}</td>
                 <td className="row-actions">
-                  <button onClick={() => { setResEditG(r.id); setResFormG({ campanha_id: r.campanha_id, anunciante: r.anunciante, inicio: r.inicio, fim: r.fim }); }}>Editar</button>
+                  <button onClick={() => abrirEdicaoReserva(r)}>Editar</button>
                   <button className="danger" onClick={() => excluirReservaGlobal(r.id)}>Excluir</button>
                 </td>
               </tr>
@@ -381,7 +395,7 @@ export default function App() {
         </table>
       </div>
       <div className="spot-form">
-        <h2 style={{ fontSize: '.85rem' }}>{resEditG ? 'EDITAR RESERVA' : '＋ NOVA RESERVA'}</h2>
+        <h2 style={{ fontSize: '.85rem' }}>＋ NOVA RESERVA</h2>
         <label>Campanha
           <select value={resFormG.campanha_id} onChange={(e) => setResFormG({ ...resFormG, campanha_id: e.target.value })}>
             {resCamps.map((c: any) => (
@@ -396,16 +410,36 @@ export default function App() {
         </div>
         {resMsgG && <p className={`spot-msg ${resMsgG.tipo === 'ok' ? 'ok' : 'erro'}`}>{resMsgG.texto}</p>}
         <div className="toolbar" style={{ marginTop: 8, marginBottom: 0 }}>
-          <button onClick={salvarReservaGlobal}>{resEditG ? 'Salvar alterações' : 'Adicionar reserva'}</button>
-          {resEditG && <button className="ghost" onClick={() => { setResEditG(null); setResFormG({ campanha_id: resFormG.campanha_id, anunciante: '', inicio: '2026-12-01', fim: '2026-12-31' }); }}>Cancelar edição</button>}
+          <button onClick={salvarReservaGlobal}>Adicionar reserva</button>
         </div>
       </div>
     </>
   );
   // Menu global de reservas: lista tudo + criar/editar/excluir
   const abrirReservasMenu = async () => {
-    setResModal(true); setResMsgG(null); setResEditG(null);
+    setResModal(true); setResMsgG(null);
     carregarAbaReservas();
+  };
+  // Janela independente de edição: não usa o formulário de criação
+  const abrirEdicaoReserva = (r: any) => {
+    const camp = resCamps.find((c: any) => c.id === r.campanha_id);
+    setResMsgM(null);
+    setResEditM({
+      id: r.id,
+      campLabel: camp ? `${camp.anunciante} · ${camp.led_codigo} (${br(camp.inicio)}→${br(camp.fim)})` : r.campanha_id,
+      anunciante: r.anunciante, inicio: r.inicio, fim: r.fim,
+    });
+  };
+  const salvarEdicaoReserva = async () => {
+    if (!resEditM) return;
+    setResMsgM(null);
+    try {
+      await api.editarReserva(resEditM.id, { anunciante: resEditM.anunciante, inicio: resEditM.inicio, fim: resEditM.fim });
+      setResEditM(null);
+      setResListaG(await api.listarReservas(cidade));
+      setResMsgG({ tipo: 'ok', texto: 'Reserva atualizada.' });
+      carregar();
+    } catch (e: any) { setResMsgM({ tipo: 'erro', texto: e.message }); }
   };
   const salvarReservaGlobal = async () => {
     setResMsgG(null);
@@ -414,19 +448,43 @@ export default function App() {
       return;
     }
     try {
-      if (resEditG) await api.editarReserva(resEditG, resFormG);
-      else await api.criarReserva(resFormG.campanha_id, resFormG);
+      await api.criarReserva(resFormG.campanha_id, resFormG);
       setResFormG({ campanha_id: resFormG.campanha_id, anunciante: '', inicio: '2026-12-01', fim: '2026-12-31' });
-      setResEditG(null);
-      setResListaG(await api.listarReservas());
+      setResListaG(await api.listarReservas(cidade));
       setResMsgG({ tipo: 'ok', texto: 'Reserva salva — avisaremos o início próximo.' });
       carregar();
     } catch (e: any) { setResMsgG({ tipo: 'erro', texto: e.message }); }
   };
   const excluirReservaGlobal = async (id: string) => {
     if (!confirm('Excluir esta reserva?')) return;
-    try { await api.excluirReserva(id); setResListaG(await api.listarReservas()); carregar(); }
+    try { await api.excluirReserva(id); setResListaG(await api.listarReservas(cidade)); carregar(); }
     catch (e: any) { setResMsgG({ tipo: 'erro', texto: e.message }); }
+  };
+
+  // Menu de cidades: incluir / editar / excluir (conforme tabela cidades)
+  const salvarCidade = async () => {
+    setCidMsg(null);
+    if (!cidForm.id.trim() || !cidForm.nome.trim()) {
+      setCidMsg({ tipo: 'erro', texto: 'Preencha id e nome.' });
+      return;
+    }
+    try {
+      if (cidEditando) {
+        await api.editarCidade(cidEditando, { nome: cidForm.nome, uf: cidForm.uf, fuso: cidForm.fuso });
+        setCidMsg({ tipo: 'ok', texto: 'Cidade atualizada.' });
+      } else {
+        const { status, body } = await api.criarCidade(cidForm);
+        if (status !== 201) { setCidMsg({ tipo: 'erro', texto: body?.erro || `Falha (HTTP ${status}).` }); return; }
+        setCidMsg({ tipo: 'ok', texto: `Cidade ${cidForm.nome} cadastrada.` });
+      }
+      setCidForm({ id: '', nome: '', uf: '', fuso: 'America/Maceio' }); setCidEditando(null);
+      carregar();
+    } catch (e: any) { setCidMsg({ tipo: 'erro', texto: e.message }); }
+  };
+  const excluirCidade = async (id: string) => {
+    if (!confirm(`Excluir a cidade "${id}"? (só vazia)`)) return;
+    try { await api.excluirCidade(id); carregar(); }
+    catch (e: any) { setCidMsg({ tipo: 'erro', texto: e.message }); }
   };
 
   // Menu de LEDs: incluir / editar / excluir
@@ -476,10 +534,16 @@ export default function App() {
   }
 
   const pendentes = notifs.filter((n) => !n.lida);
+  const visiveis = pendentes.filter((n) => !dismissed.includes(n.id));
   return (
     <>
       <div className="toasts" role="alert">
-        {can('notificacoes') && pendentes.filter((n) => !dismissed.includes(n.id)).slice(0, 4).map((n) => (
+        {can('notificacoes') && visiveis.length > 1 && (
+          <button className="toasts-close" onClick={() => setDismissed((xs) => [...xs, ...visiveis.map((n) => n.id)])}>
+            ✕ fechar todas ({visiveis.length})
+          </button>
+        )}
+        {can('notificacoes') && visiveis.slice(0, 4).map((n) => (
           <ToastItem key={n.id} n={n}
             onView={() => verCampanha(n)}
             onClose={() => setDismissed((xs) => [...xs, n.id])} />
@@ -507,6 +571,7 @@ export default function App() {
           <div className="pill">📅 {dash.periodo}</div>
           {can('leds') && <button className="pill" style={{ cursor: 'pointer' }} onClick={() => { setLedsMenu(true); setLedMsg(null); }} title="Cadastro de LEDs (8 espaços por painel)">📺 LEDs</button>}
           {can('reservas') && <button className="pill" style={{ cursor: 'pointer' }} onClick={abrirReservasMenu} title="Cadastro de reservas (múltiplos períodos por campanha)">🗓️ Reservas</button>}
+          {can('cidades') && <button className="pill" style={{ cursor: 'pointer' }} onClick={() => { setCidMenu(true); setCidMsg(null); }} title="Cadastro de cidades (id, nome, UF, fuso)">🏙️ Cidades</button>}
           {can('usuarios') && <button className="pill" style={{ cursor: 'pointer' }} onClick={abrirUsersMenu} title="Controle de acesso: quem vê o quê">👥 Usuários</button>}
           {perfil && <div className="pill" title="Perfil do usuário (spec §9.2)">👤 {perfil}{isAdmin ? ' · admin' : ''}</div>}
           <div style={{ position: 'relative' }}>
@@ -543,7 +608,6 @@ export default function App() {
           <div className="card">
             <h2>OCUPAÇÃO POR LED</h2>
             <p className="sub">Linha do tempo de campanhas veiculando / reservadas por painel — {cidadeNome(cidade)}.</p>
-            <span className="badge b-warn">● VENCIMENTO PRÓXIMO: AJU 01</span>
             {dash.gantt_por_led.map((l) => {
               const usados = l.espacos_usados ?? l.campanhas.length;
               const total = l.espacos_total ?? 8;
@@ -804,7 +868,11 @@ export default function App() {
               const led = (ledsLista.length ? ledsLista : dash.gantt_por_led).find((l: any) => l.codigo === e.target.value);
               setForm({ ...form, led_codigo: e.target.value, cidade_id: led?.cidade_id || form.cidade_id });
             }}>
-              {(ledsLista.length ? ledsLista : dash.gantt_por_led).map((l: any) => <option key={l.codigo} value={l.codigo}>{l.codigo}</option>)}
+              {(() => {
+                const todos = ledsLista.length ? ledsLista : dash.gantt_por_led;
+                const ops = todos.filter((l: any) => !form.cidade_id || l.cidade_id === form.cidade_id);
+                return (ops.length ? ops : todos).map((l: any) => <option key={l.codigo} value={l.codigo}>{l.codigo}</option>);
+              })()}
             </select>
             <input type="date" value={form.inicio} onChange={(e) => setForm({ ...form, inicio: e.target.value })} />
             <input type="date" value={form.fim} onChange={(e) => setForm({ ...form, fim: e.target.value })} />
@@ -817,13 +885,13 @@ export default function App() {
         </div>
       )}
       {resModal && can('reservas') && (
-        <div className="modal-bg" onClick={() => { setResModal(false); setResEditG(null); }}>
+        <div className="modal-bg" onClick={() => { setResModal(false); }}>
           <div className="card modal modal-lg" onClick={(e) => e.stopPropagation()}>
             <h2>CADASTRO DE RESERVAS</h2>
             <p className="sub">Múltiplos períodos futuros por campanha, cada um com seu anunciante; cada um gera toast de início próximo.</p>
             {conteudoReservas()}
             <div className="toolbar" style={{ marginTop: 12, marginBottom: 0 }}>
-              <button className="ghost" onClick={() => { setResModal(false); setResEditG(null); }}>Fechar</button>
+              <button className="ghost" onClick={() => { setResModal(false); }}>Fechar</button>
             </div>
           </div>
         </div>
@@ -933,6 +1001,48 @@ export default function App() {
           </div>
         </div>
       )}
+      {cidMenu && can('cidades') && (
+        <div className="modal-bg" onClick={() => { setCidMenu(false); setCidEditando(null); }}>
+          <div className="card modal modal-lg" onClick={(e) => e.stopPropagation()}>
+            <h2>CADASTRO DE CIDADES</h2>
+            <p className="sub">Conforme a tabela cidades: id, nome, UF e fuso. Exclusão só de cidade vazia (sem LEDs).</p>
+            <div className="table-scroll">
+            <table>
+              <thead><tr><th>ID</th><th>Nome</th><th>UF</th><th>Fuso</th><th>Ações</th></tr></thead>
+              <tbody>
+                {(cidades.length ? cidades : []).map((c: any) => (
+                  <tr key={c.id}>
+                    <td><b>{c.id}</b></td><td>{c.nome}</td><td>{c.uf}</td><td style={{ fontSize: '.7rem' }}>{c.fuso}</td>
+                    <td className="row-actions">
+                      <button onClick={() => { setCidEditando(c.id); setCidForm({ id: c.id, nome: c.nome, uf: c.uf || '', fuso: c.fuso || 'America/Maceio' }); }}>Editar</button>
+                      <button className="danger" onClick={() => excluirCidade(c.id)}>Excluir</button>
+                    </td>
+                  </tr>
+                ))}
+                {cidades.length === 0 && <tr><td colSpan={5} style={{ color: 'var(--muted)' }}>Nenhuma cidade cadastrada.</td></tr>}
+              </tbody>
+            </table>
+            </div>
+            <div className="spot-form">
+              <h2 style={{ fontSize: '.85rem' }}>{cidEditando ? `EDITAR ${cidEditando}` : '＋ NOVA CIDADE'}</h2>
+              <div className="spot-row" style={{ gridTemplateColumns: '1fr 1fr 1fr 1fr' }}>
+                <label>ID<input placeholder="recife" value={cidForm.id} disabled={!!cidEditando} onChange={(e) => setCidForm({ ...cidForm, id: e.target.value.toLowerCase().trim() })} /></label>
+                <label>Nome<input placeholder="Recife" value={cidForm.nome} onChange={(e) => setCidForm({ ...cidForm, nome: e.target.value })} /></label>
+                <label>UF<input placeholder="PE" value={cidForm.uf} onChange={(e) => setCidForm({ ...cidForm, uf: e.target.value.toUpperCase() })} /></label>
+                <label>Fuso<input placeholder="America/Recife" value={cidForm.fuso} onChange={(e) => setCidForm({ ...cidForm, fuso: e.target.value })} /></label>
+              </div>
+              {cidMsg && <p className={`spot-msg ${cidMsg.tipo === 'ok' ? 'ok' : 'erro'}`}>{cidMsg.texto}</p>}
+              <div className="toolbar" style={{ marginTop: 8, marginBottom: 0 }}>
+                <button onClick={salvarCidade}>{cidEditando ? 'Salvar alterações' : 'Cadastrar cidade'}</button>
+                {cidEditando && <button className="ghost" onClick={() => { setCidEditando(null); setCidForm({ id: '', nome: '', uf: '', fuso: 'America/Maceio' }); }}>Cancelar edição</button>}
+              </div>
+            </div>
+            <div className="toolbar" style={{ marginTop: 12, marginBottom: 0 }}>
+              <button className="ghost" onClick={() => { setCidMenu(false); setCidEditando(null); }}>Fechar</button>
+            </div>
+          </div>
+        </div>
+      )}
       {ledsMenu && (
         <div className="modal-bg" onClick={() => { setLedsMenu(false); setLedEditando(null); }}>
           <div className="card modal modal-lg" onClick={(e) => e.stopPropagation()}>
@@ -988,6 +1098,24 @@ export default function App() {
             )}
             <div className="toolbar" style={{ marginTop: 12, marginBottom: 0 }}>
               <button className="ghost" onClick={() => { setLedsMenu(false); setLedEditando(null); }}>Fechar</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {resEditM && (
+        <div className="modal-bg modal-fg" onClick={() => setResEditM(null)}>
+          <div className="card modal" onClick={(e) => e.stopPropagation()}>
+            <h2>EDITAR RESERVA</h2>
+            <p className="sub">{resEditM.campLabel}</p>
+            <label>Anunciante da reserva<input value={resEditM.anunciante} onChange={(e) => setResEditM({ ...resEditM, anunciante: e.target.value })} /></label>
+            <div className="spot-row" style={{ gridTemplateColumns: '1fr 1fr' }}>
+              <label>Início<input type="date" value={resEditM.inicio} onChange={(e) => setResEditM({ ...resEditM, inicio: e.target.value })} /></label>
+              <label>Fim<input type="date" value={resEditM.fim} onChange={(e) => setResEditM({ ...resEditM, fim: e.target.value })} /></label>
+            </div>
+            {resMsgM && <p className={`spot-msg ${resMsgM.tipo === 'ok' ? 'ok' : 'erro'}`}>{resMsgM.texto}</p>}
+            <div className="toolbar" style={{ marginTop: 10 }}>
+              <button onClick={salvarEdicaoReserva}>Salvar alterações</button>
+              <button className="ghost" onClick={() => setResEditM(null)}>Cancelar</button>
             </div>
           </div>
         </div>
