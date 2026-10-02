@@ -228,3 +228,7 @@ ormalizarAnunciante() em todas as escritas e nas chaves de grupo (Dup X = Dup X 
 
 - Deploy cria banco VAZIO por padrao; SEED=true popula o demo; config garantida em todo boot (sem ela, o POST de campanha quebrava com cfg undefined); admin de resgate criado so se nao houver usuarios.
 - **Incidente**: comando de verificacao apagou data.db por engano; restaurado 100% (6 cidades + 32 LEDs recadastrados via API e reimport do CSV: 179/76).
+
+## Ocupação por cidade ignorava veiculando/reservadas
+
+- **Causa**: métrica mensal (dias no mês corrente) zerava LEDs cheios de bookings futuros (Olinda 3,2% com painéis lotados). Nova métrica de inventário: anunciantes não-vencidos ÷ 8 espaços, média dos LEDs (Aracaju 50, Salvador 39,6, Recife 30...). KPI/evolução seguem dias-no-mês (spec §4.3).

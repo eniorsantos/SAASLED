@@ -56,7 +56,8 @@ Legenda de auth: 🔓 pública · 🔑 login · ✏️ admin/regional/operador �
 
 | Método | Rota | Auth | Resposta |
 |--------|------|------|----------|
-| GET | `/api/dashboard?cidades=` | 🔓 (+escopo) | `{hoje, periodo, kpis{...}, distribuicao[3], evolucao_mensal[6], ocupacao_por_cidade[], gantt_por_led[] (cada LED com `espacos_usados/espacos_total`; cada campanha com `reservas[]`), a_vencer_lista[] (só `a_vencer`), a_iniciar_lista[] (`agendada` + reservas próximas)}` |
+| GET | `/api/dashboard?cidades=` | 🔓 (+escopo) | `{hoje, periodo, kpis{...}, distribuicao[3], evolucao_mensal[6], ocupacao_por_cidade[] (inventário: não-vencidas ÷ 8 por LED), gantt_por_led[] (cada LED com `espacos_usados/espacos_total`; cada campanha com `reservas[]`), a_vencer_lista[] (só `a_vencer`), a_iniciar_lista[] (`agendada` + reservas próximas)}` |
+eservas[]), a_vencer_lista[] (só _vencer), a_iniciar_lista[] (gendada + reservas próximas)} |
 | GET | `/api/planilha?cidades=&status=&q=` | 🔓 (+escopo) | `[{id, cidade, led, anunciante, inicio, fim, status}]` |
 | GET | `/api/export/planilha.csv?...` | `exportar` | mesmos filtros da planilha (+`?token=`); `;`-separado com BOM |
 | GET | `/api/export/planilha.xlsx?...` | `exportar` | mesmos filtros (+`?token=`); aba `Veiculação` |

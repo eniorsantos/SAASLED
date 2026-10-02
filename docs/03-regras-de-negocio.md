@@ -23,9 +23,11 @@ hoje global).
 
 `ocupacao(campanhas, pIni, pFim)` = dias distintos cobertos ÷ dias totais do
 período (usa `Set`, então campanhas sobrepostas no mesmo LED não contam dobro).
-O dashboard calcula por LED no **mês do "hoje"** (`periodoReferencia()`) e tira
-a média; a evolução usa os **últimos 6 meses** reais; o KPI "A vencer" conta
-`fim−hoje ∈ [0, 7]`.
+O dashboard usa duas leituras: **KPI/evolução** (dias no mês do "hoje",
+spec §4.3) e **ocupação por cidade** (inventário comprometido = anunciantes
+**veiculando + reservadas**, i.e. não-vencidas, ÷ `max_clientes_por_led`,
+média dos LEDs — reflete o comercial independente do mês). A evolução usa os
+**últimos 6 meses** reais; o KPI "A vencer" conta `fim−hoje ∈ [0, 7]`.
 
 ## 3.3 Notificações toast (spec §4.1)
 

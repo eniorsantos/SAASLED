@@ -203,11 +203,12 @@ const server = app.listen(0, async () => {
     const dup = (await get('/api/notificacoes')).filter((n) => n.corpo.includes('Dup X'));
     assert.equal(dup.length, 1, 'nomes com espaços agrupados em 1 toast');
     // ocupação por cidade calculada por cidade (não só Aracaju)
-    const antesSalv = (await get('/api/dashboard')).ocupacao_por_cidade.find((c) => c.id === 'salvador').valor;
     assert.equal((await ledPost({ codigo: 'TST O1', endereco: 'Rua O', cidade_id: 'salvador' })).status, 201, 'LED salvador criado');
     assert.equal((await postCamp({ id: 'cap-o1', cidade_id: 'salvador', led_codigo: 'TST O1', anunciante: 'Ocupante', inicio: '2026-10-01', fim: '2026-10-31' })).status, 201, 'campanha mês cheio');
+    // ocupação por cidade = inventário: anunciantes ativos (veiculando+reservadas) ÷ 8 espaços
+    // salvador aqui: G1/G2 com {Grupo X, Dup X} (25% cada) + O1 com {Ocupante} (12.5%) → média 20.8
     const occ2 = await get('/api/dashboard');
-    assert.ok(occ2.ocupacao_por_cidade.find((c) => c.id === 'salvador').valor > antesSalv, 'salvador reflete o LED novo');
+    assert.equal(occ2.ocupacao_por_cidade.find((c) => c.id === 'salvador').valor, 20.8, 'salvador reflete o LED novo');
     await fetch(base + '/api/campanhas/cap-o1', { method: 'DELETE', headers: { Authorization: 'Bearer ' + login.token } });
     assert.equal((await fetch(base + '/api/leds/TST%20O1', { method: 'DELETE', headers: { Authorization: 'Bearer ' + login.token } })).status, 200, 'LED salvador excluído');
     // menu de cadastro de reservas: lista global + edição + permissão

@@ -42,8 +42,9 @@ $env:DB_PATH = '.\test-smoke.db'; npm test; Remove-Item .\test-smoke.db
     `Dup X`/`Dup X  ` → 1 toast (normalização);
 17. escopo de escrita: regional não cria/altera/exclui fora do vínculo (403),
     cidade≠cidade do LED → 400;
-18. filtro de cidade fim-a-fim: ocupação calculada por cidade (Salvador vazia
-    = 0, com LED de mês cheio sobe); LEDs filtrados por `?cidades=`;
+18. filtro de cidade fim-a-fim: Salvador vazia = 0; com 3 LEDs de inventário
+    conhecido a média dá 20.8 (25+25+12.5 ÷ 8 espaços); LEDs filtrados por
+    `?cidades=`;
 19. rosca com % reais; LEDs, reservas aninhadas, spots e central com escopo
     (regional só vê Aracaju; toast com `cidade_id`);
 20. cidades: incluir, duplicada `409`, editar nome, exclusão com LEDs `409`,

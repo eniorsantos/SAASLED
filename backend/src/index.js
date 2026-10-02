@@ -473,8 +473,12 @@ app.get('/api/dashboard', authOpcional, (req, res) => {
       return { mes, ocupacao: vals.length ? +(vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(1) : 0 };
     }),
     ocupacao_por_cidade: cidades.map((c) => {
+      // Inventário comprometido: anunciantes veiculando + reservadas (não-vencidas) ÷ 8 espaços
       const ledsC = leds.filter((l) => l.cidade_id === c.id);
-      const vals = ledsC.map((l) => R.ocupacao(camps.filter((cc) => cc.led_codigo === l.codigo), P_INI, P_FIM));
+      const vals = ledsC.map((l) => {
+        const usados = new Set(comSt.filter((cc) => cc.led_codigo === l.codigo && cc.status !== 'vencida').map((cc) => cc.anunciante)).size;
+        return cfg.max_clientes_por_led ? +(usados / cfg.max_clientes_por_led * 100).toFixed(1) : 0;
+      });
       const media = vals.length ? +(vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(1) : 0;
       return { cidade: c.nome.toUpperCase(), id: c.id, valor: media };
     }),
