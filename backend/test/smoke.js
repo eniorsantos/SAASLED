@@ -242,6 +242,18 @@ const server = app.listen(0, async () => {
       body: JSON.stringify({ cidade_id: 'salvador', led_codigo: 'TST S1' }) })).status), 403, 'mover p/ fora do escopo bloqueado');
     assert.equal((await fetch(base + '/api/leds/TST%20S1', { method: 'DELETE', headers: { Authorization: 'Bearer ' + regTok } })).status, 403, 'exclusão fora do escopo bloqueada');
     assert.equal((await fetch(base + '/api/leds/TST%20S1', { method: 'DELETE', headers: { Authorization: 'Bearer ' + login.token } })).status, 200, 'admin exclui');
+    // tema: paleta padrão, edição admin, bloqueio e validação
+    const tema0 = await get('/api/tema');
+    assert.equal(tema0.vars.teal, '#2dd4bf', 'tema padrão do mockup');
+    const putTema = (body, tok) => fetch(base + '/api/tema', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + tok },
+      body: JSON.stringify(body),
+    }).then(async (r) => ({ status: r.status, json: await r.json().catch(() => ({})) }));
+    assert.equal((await putTema({ vars: { teal: '#ff0000' } }, login.token)).json.vars.teal, '#ff0000', 'admin troca cor');
+    assert.equal((await putTema({ vars: { teal: '#2dd4bf' } }, login.token)).status, 200, 'admin restaura');
+    assert.equal((await putTema({ vars: { teal: '#00ff00' } }, opLogin.token)).status, 403, 'não-admin não edita tema');
+    assert.equal((await putTema({ vars: { teal: 'azul' } }, login.token)).status, 400, 'cor inválida rejeitada');
+    assert.equal((await putTema({ vars: { xyz: '#fff' } }, login.token)).status, 400, 'variável desconhecida rejeitada');
     async function postResAuth(tok, cid, body) {
       return fetch(base + '/api/campanhas/' + cid + '/reservas', {
         method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + tok },

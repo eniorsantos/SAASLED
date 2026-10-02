@@ -43,6 +43,10 @@ CREATE TABLE IF NOT EXISTS permissoes (
   recurso TEXT NOT NULL,
   PRIMARY KEY (login, recurso)
 );
+CREATE TABLE IF NOT EXISTS tema (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  vars TEXT NOT NULL DEFAULT '{}'
+);
 CREATE TABLE IF NOT EXISTS reservas (
   id TEXT PRIMARY KEY, campanha_id TEXT NOT NULL REFERENCES campanhas(id) ON DELETE CASCADE,
   inicio TEXT NOT NULL, fim TEXT NOT NULL, anunciante TEXT NOT NULL DEFAULT '',

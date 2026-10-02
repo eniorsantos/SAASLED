@@ -453,14 +453,15 @@ app.get('/api/dashboard', authOpcional, (req, res) => {
   const aVencer = comSt.filter((c) => { const d = R.diasEntre(c.fim, R.hojeISO()); return d >= 0 && d <= 7 && c.inicio <= R.hojeISO(); }).length;
   const comCampanha = new Set(comSt.filter((c) => c.status !== 'vencida').map((c) => c.led_codigo));
   const livres = Math.max(0, leds.length - comCampanha.size);
+  const tema = temaVars();
   // Rosca real: campanhas veiculando vs. reservadas + LEDs livres (era fixa 55/25/20)
   const nVeic = comSt.filter((c) => ['veiculando', 'a_vencer'].includes(c.status)).length;
   const nRes = comSt.filter((c) => ['agendada', 'reservada'].includes(c.status)).length;
   const totDist = Math.max(1, nVeic + nRes + livres);
   const pct = (n) => Math.round((n / totDist) * 100);
-  const distV = [{ name: 'Veiculando', value: pct(nVeic), color: '#2dd4bf' },
-    { name: 'Reservada', value: pct(nRes), color: '#8b7cf6' },
-    { name: 'Livre', value: 0, color: '#3a4468' }];
+  const distV = [{ name: 'Veiculando', value: pct(nVeic), color: tema.teal },
+    { name: 'Reservada', value: pct(nRes), color: tema.purple },
+    { name: 'Livre', value: 0, color: tema.border }];
   distV[2].value = Math.max(0, 100 - distV[0].value - distV[1].value);
   const cidades = db.prepare('SELECT * FROM cidades').all()
     .filter((c) => filtro.length === 0 || filtro.includes(c.id));
@@ -776,7 +777,44 @@ app.patch('/api/notificacoes/:id/lida', auth(), (req, res) => {
   res.json({ ok: true });
 });
 
-// — Usuários: quem vê o quê (cidades vinculadas + recursos extras) —
+// — Tema: paleta do painel (fundo, textos, destaques, gráficos) —
+// recurso `config`; GET público (o painel precisa ler sem login p/ pintar)
+const TEMA_PADRAO = {
+  bg: '#0b1224', panel: '#131b32', panel2: '#0f1730', border: '#232d4a',
+  text: '#eef1f8', muted: '#8b93ab', teal: '#2dd4bf', orange: '#f5943a',
+  blue: '#4f8ff7', purple: '#8b7cf6', red: '#f0546a',
+};
+const ROTULOS_TEMA = {
+  bg: 'Fundo', panel: 'Painel', panel2: 'Painel 2', border: 'Borda',
+  text: 'Texto', muted: 'Texto apagado', teal: 'Destaque/veiculando', orange: 'Alerta/a vencer',
+  blue: 'Informação/agendada', purple: 'Reservada', red: 'Perigo/vencida',
+};
+function temaVars() {
+  try {
+    const row = db.prepare('SELECT vars FROM tema WHERE id = 1').get();
+    return { ...TEMA_PADRAO, ...JSON.parse(row?.vars || '{}') };
+  } catch { return { ...TEMA_PADRAO }; }
+}
+const ehCor = (s) => /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(String(s || ''));
+app.get('/api/tema', (req, res) => res.json({ vars: temaVars(), rotulos: ROTULOS_TEMA }));
+app.put('/api/tema', auth(), requer('config'), (req, res) => {
+  const { vars = {}, restaurar = false } = req.body || {};
+  if (restaurar) {
+    db.prepare('INSERT OR REPLACE INTO tema (id, vars) VALUES (1, ?)').run('{}');
+    log(req.user.login, 'tema.restore', 'padrão');
+    return res.json({ vars: temaVars() });
+  }
+  const atual = temaVars();
+  for (const [k, v] of Object.entries(vars)) {
+    if (!(k in TEMA_PADRAO)) return res.status(400).json({ erro: `variável desconhecida: ${k}` });
+    if (!ehCor(v)) return res.status(400).json({ erro: `cor inválida para ${k} (use #rgb ou #rrggbb)` });
+    atual[k] = v;
+  }
+  db.prepare('INSERT OR REPLACE INTO tema (id, vars) VALUES (1, ?)')
+    .run(JSON.stringify(atual));
+  log(req.user.login, 'tema.update', Object.keys(vars).join(','));
+  res.json({ vars: temaVars() });
+});
 function detalheUsuario(login) {
   const u = db.prepare('SELECT login,perfil,nome FROM usuarios WHERE login = ?').get(login);
   if (!u) return null;

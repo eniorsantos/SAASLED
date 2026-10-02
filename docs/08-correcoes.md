@@ -232,3 +232,12 @@ ormalizarAnunciante() em todas as escritas e nas chaves de grupo (Dup X = Dup X 
 ## Ocupação por cidade ignorava veiculando/reservadas
 
 - **Causa**: métrica mensal (dias no mês corrente) zerava LEDs cheios de bookings futuros (Olinda 3,2% com painéis lotados). Nova métrica de inventário: anunciantes não-vencidos ÷ 8 espaços, média dos LEDs (Aracaju 50, Salvador 39,6, Recife 30...). KPI/evolução seguem dias-no-mês (spec §4.3).
+
+## Aba Configuracoes (Acesso + Cidades + Cores)
+
+- Menus de Usuarios e Cidades viraram secoes da aba (botoes navegam); modais removidos.
+- **Tema**: tabela 	ema + GET|PUT /api/tema (recurso config, valida hex, restaurar); front aplica nas CSS vars (Gantt, dots, login, toasts) e nos Recharts; rosca da API usa as cores do tema; smoke item 21.
+
+## Config vira tela cheia
+
+- Botao topbar Configuracao + Voltar; 	ela troca o painel (Acesso/Cidades/Cores dentro); botoes Usuarios/Cidades da topbar removidos; tab config removida.

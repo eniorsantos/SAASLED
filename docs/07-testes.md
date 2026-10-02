@@ -48,7 +48,9 @@ $env:DB_PATH = '.\test-smoke.db'; npm test; Remove-Item .\test-smoke.db
 19. rosca com % reais; LEDs, reservas aninhadas, spots e central com escopo
     (regional só vê Aracaju; toast com `cidade_id`);
 20. cidades: incluir, duplicada `409`, editar nome, exclusão com LEDs `409`,
-    exclusão de vazia `200`.
+    exclusão de vazia `200`;
+21. tema: padrão do mockup, troca/restaura (admin), `403` não-admin, `400`
+    cor/variável inválida.
 
 ## Checks manuais usados no debug
 

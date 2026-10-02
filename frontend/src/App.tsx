@@ -1,9 +1,10 @@
 ﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, LineChart, Line } from 'recharts'
 import './index.css'
-import { api, FALLBACK_DASH, STATUS_COR, STATUS_ROTULO, br, type Dashboard, type Me, type Notif, type PlanilhaRow } from './api'
+import { api, salvarTema, FALLBACK_DASH, corStatus, STATUS_ROTULO, br, type Dashboard, type Me, type Notif, type PlanilhaRow } from './api'
 
 type Tab = 'dashboard' | 'planilha' | 'graficos' | 'reservas'
+type SecaoConfig = 'acesso' | 'cidades' | 'tema'
 
 // Toast arrastável: aparece em todo login/refresh; fechar só dispensa nesta
 // sessão (não marca como lida — isso é feito na central). Arraste pelo título.
@@ -54,8 +55,13 @@ export default function App() {
   const [importMsg, setImportMsg] = useState<{ tipo: 'ok' | 'erro'; texto: string } | null>(null);
   // Toasts dispensados nesta sessão (voltam no próximo login/refresh)
   const [dismissed, setDismissed] = useState<(number | string)[]>([]);
-  // "Ver campanha": vai à planilha, busca o anunciante e pisca a linha.
-  // Funciona mesmo se a API ainda não mandar anunciante (extrai do texto).
+  // Navegação: troca a aba e rola até o painel (senão parece que nada aconteceu)
+  const painelRef = useRef<HTMLDivElement>(null);
+  const irParaAba = (t: Tab, secao?: SecaoConfig) => {
+    setTab(t);
+    if (secao) setConfigSecao(secao);
+    setTimeout(() => painelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
+  };
   const [destaque, setDestaque] = useState<string | null>(null);
   const extrairAnunciante = (n: Notif): string | null => {
     if (n.anunciante) return n.anunciante;
@@ -66,7 +72,7 @@ export default function App() {
   };
   const verCampanha = (n: Notif) => {
     if (online && me && !can('planilha')) { setTab('dashboard'); return; }
-    setTab('planilha');
+    irParaAba('planilha');
     const nome = extrairAnunciante(n);
     if (nome) setQ(nome);
     setStFilter('');
@@ -99,8 +105,8 @@ export default function App() {
   // Controle de acesso: o que este usuário pode ver/fazer (vem de /api/me)
   const [me, setMe] = useState<Me | null>(null);
   const can = (recurso: string) => online && !!me?.efetivas?.includes(recurso);
+  const temConfig = can('usuarios') || can('cidades') || can('config');
   // Menu de usuários (admin): CRUD + cidades + recursos por usuário
-  const [usersMenu, setUsersMenu] = useState(false);
   const [usersLista, setUsersLista] = useState<any[]>([]);
   const [recursosLista, setRecursosLista] = useState<{ id: string; rotulo: string }[]>([]);
   const [userForm, setUserForm] = useState({ login: '', senha: '', perfil: 'visualizador', nome: '', cidades: [] as string[], permissoes: [] as string[] });
@@ -122,8 +128,13 @@ export default function App() {
   const [ledForm, setLedForm] = useState({ codigo: '', endereco: '', cidade_id: 'aracaju' });
   const [ledEditando, setLedEditando] = useState<string | null>(null);
   const [ledMsg, setLedMsg] = useState<{ tipo: 'ok' | 'erro'; texto: string } | null>(null);
+  // Tema (paleta configurável): lido da API e aplicado nas variáveis CSS
+  const [tema, setTema] = useState<{ vars: Record<string, string>; rotulos: Record<string, string> }>({ vars: {}, rotulos: {} });
+  const [temaMsg, setTemaMsg] = useState<{ tipo: 'ok' | 'erro'; texto: string } | null>(null);
+  const [configSecao, setConfigSecao] = useState<SecaoConfig>('acesso');
+  // Tela cheia de configurações (troca o painel; LEDs/Usuários/Cidades moram aqui)
+  const [tela, setTela] = useState<'painel' | 'config'>('painel');
   // Menu de cadastro de cidades (id, nome, UF, fuso — padrão do banco)
-  const [cidMenu, setCidMenu] = useState(false);
   const [cidForm, setCidForm] = useState({ id: '', nome: '', uf: '', fuso: 'America/Maceio' });
   const [cidEditando, setCidEditando] = useState<string | null>(null);
   const [cidMsg, setCidMsg] = useState<{ tipo: 'ok' | 'erro'; texto: string } | null>(null);
@@ -140,6 +151,10 @@ export default function App() {
       ]);
       const m = await api.me().catch(() => null);
       setDash(d); setOnline(true);
+      try {
+        const t = await api.tema().catch(() => null);
+        if (t) setTema(t);
+      } catch { /* mantém paleta padrão */ }
       setRows(p); setNotifs(n.map((x) => ({ ...x, titulo: x.titulo, corpo: x.corpo })));
       if (m) setMe(m);
       if (cids.length) setCidades(cids);
@@ -238,6 +253,12 @@ export default function App() {
   };
   const podeEditar = can('campanhas_editar');
 
+  // Aplica a paleta nas variáveis CSS (painel, fontes, gráficos via corStatus)
+  useEffect(() => {
+    const root = document.documentElement;
+    for (const [k, v] of Object.entries(tema.vars || {})) root.style.setProperty(`--${k}`, v);
+  }, [tema]);
+
   // Aba padrão respeita a visibilidade do usuário (só com permissões carregadas)
   useEffect(() => {
     if (!me || !online) return;
@@ -292,14 +313,14 @@ export default function App() {
     try { await api.excluirCampanha(id); carregar(); } catch (e: any) { alert(e.message); }
   };
 
-  // Menu de usuários: incluir / editar (perfil, cidades, recursos) / excluir
-  const abrirUsersMenu = async () => {
-    setUsersMenu(true); setUserMsg(null);
+  // Dados de acesso para a aba Config (usuários + catálogo de recursos)
+  const carregarAcesso = useCallback(async () => {
+    setUserMsg(null);
     try {
       const [us, recs] = await Promise.all([api.usuarios(), api.recursos()]);
       setUsersLista(us); setRecursosLista(recs);
     } catch (e: any) { setUserMsg({ tipo: 'erro', texto: e.message }); }
-  };
+  }, []);
   const alternar = (lista: string[], v: string) =>
     lista.includes(v) ? lista.filter((x) => x !== v) : [...lista, v];
   const salvarUsuario = async () => {
@@ -371,6 +392,20 @@ export default function App() {
   useEffect(() => {
     if (tab === 'reservas' && can('reservas')) carregarAbaReservas();
   }, [tab, me, cidade]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (tela !== 'config') return;
+    if (configSecao === 'acesso' && !can('usuarios')) {
+      if (can('cidades')) setConfigSecao('cidades');
+      else if (can('config')) setConfigSecao('tema');
+    } else if (configSecao === 'cidades' && !can('cidades')) {
+      if (can('usuarios')) setConfigSecao('acesso');
+      else if (can('config')) setConfigSecao('tema');
+    } else if (configSecao === 'tema' && !can('config')) {
+      if (can('usuarios')) setConfigSecao('acesso');
+      else if (can('cidades')) setConfigSecao('cidades');
+    }
+    if (can('usuarios')) carregarAcesso();
+  }, [tela, me]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Menu global de reservas: lista tudo + criar/editar/excluir
   const [resModal, setResModal] = useState(false);
@@ -487,6 +522,116 @@ export default function App() {
     catch (e: any) { setCidMsg({ tipo: 'erro', texto: e.message }); }
   };
 
+  // Conteúdo compartilhado: Usuários (aba Config + uso interno)
+  const conteudoUsuarios = () => (
+    <>
+      <div className="table-scroll">
+      <table>
+        <thead><tr><th>Login</th><th>Nome</th><th>Perfil</th><th>Cidades</th><th>Recursos</th><th>Ações</th></tr></thead>
+        <tbody>
+          {usersLista.map((u: any) => (
+            <tr key={u.login}>
+              <td><b>{u.login}</b></td><td>{u.nome}</td><td>{u.perfil}</td>
+              <td style={{ fontSize: '.7rem' }}>{u.cidades.length ? u.cidades.join(', ') : 'todas'}</td>
+              <td style={{ fontSize: '.7rem' }}>{u.efetivas.join(', ')}</td>
+              <td className="row-actions">
+                <button onClick={() => { setUserEditando(u.login); setUserForm({ login: u.login, senha: '', perfil: u.perfil, nome: u.nome, cidades: u.cidades, permissoes: u.permissoes }); }}>Editar</button>
+                <button className="danger" onClick={() => excluirUsuario(u.login)}>Excluir</button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      </div>
+      <div className="spot-form">
+        <h2 style={{ fontSize: '.85rem' }}>{userEditando ? `EDITAR ${userEditando}` : '＋ NOVO USUÁRIO'}</h2>
+        <div className="spot-row">
+          <label>Login<input value={userForm.login} disabled={!!userEditando} onChange={(e) => setUserForm({ ...userForm, login: e.target.value })} /></label>
+          <label>{userEditando ? 'Nova senha (vazio mantém)' : 'Senha'}<input type="password" value={userForm.senha} onChange={(e) => setUserForm({ ...userForm, senha: e.target.value })} /></label>
+          <label>Perfil
+            <select value={userForm.perfil} onChange={(e) => setUserForm({ ...userForm, perfil: e.target.value })}>
+              <option value="admin">admin</option>
+              <option value="regional">regional</option>
+              <option value="operador">operador</option>
+              <option value="visualizador">visualizador</option>
+            </select>
+          </label>
+        </div>
+        <label>Nome<input value={userForm.nome} onChange={(e) => setUserForm({ ...userForm, nome: e.target.value })} /></label>
+        <label>Cidades que pode ver (vazio = todas)
+          <div className="perm-grid">
+            {(cidades.length ? cidades : [{ id: 'aracaju', nome: 'Aracaju' }]).map((c: any) => (
+              <label key={c.id} className="check"><input type="checkbox"
+                checked={userForm.cidades.includes(c.id)}
+                onChange={() => setUserForm({ ...userForm, cidades: alternar(userForm.cidades, c.id) })} />{c.nome}</label>
+            ))}
+          </div>
+        </label>
+        <label>Recursos extras além do perfil
+          <div className="perm-grid">
+            {recursosLista.map((r) => (
+              <label key={r.id} className="check"><input type="checkbox"
+                checked={userForm.permissoes.includes(r.id)}
+                onChange={() => setUserForm({ ...userForm, permissoes: alternar(userForm.permissoes, r.id) })} />{r.rotulo}</label>
+            ))}
+          </div>
+        </label>
+        {userMsg && <p className={`spot-msg ${userMsg.tipo === 'ok' ? 'ok' : 'erro'}`}>{userMsg.texto}</p>}
+        <div className="toolbar" style={{ marginTop: 8, marginBottom: 0 }}>
+          <button onClick={salvarUsuario}>{userEditando ? 'Salvar alterações' : 'Criar usuário'}</button>
+          {userEditando && <button className="ghost" onClick={() => { setUserEditando(null); setUserForm({ login: '', senha: '', perfil: 'visualizador', nome: '', cidades: [], permissoes: [] }); }}>Cancelar edição</button>}
+        </div>
+      </div>
+    </>
+  );
+
+  // Conteúdo compartilhado: Cidades (aba Config)
+  const conteudoCidades = () => (
+    <>
+      <div className="table-scroll">
+      <table>
+        <thead><tr><th>ID</th><th>Nome</th><th>UF</th><th>Fuso</th><th>Ações</th></tr></thead>
+        <tbody>
+          {(cidades.length ? cidades : []).map((c: any) => (
+            <tr key={c.id}>
+              <td><b>{c.id}</b></td><td>{c.nome}</td><td>{c.uf}</td><td style={{ fontSize: '.7rem' }}>{c.fuso}</td>
+              <td className="row-actions">
+                <button onClick={() => { setCidEditando(c.id); setCidForm({ id: c.id, nome: c.nome, uf: c.uf || '', fuso: c.fuso || 'America/Maceio' }); }}>Editar</button>
+                <button className="danger" onClick={() => excluirCidade(c.id)}>Excluir</button>
+              </td>
+            </tr>
+          ))}
+          {cidades.length === 0 && <tr><td colSpan={5} style={{ color: 'var(--muted)' }}>Nenhuma cidade cadastrada.</td></tr>}
+        </tbody>
+      </table>
+      </div>
+      <div className="spot-form">
+        <h2 style={{ fontSize: '.85rem' }}>{cidEditando ? `EDITAR ${cidEditando}` : '＋ NOVA CIDADE'}</h2>
+        <div className="spot-row" style={{ gridTemplateColumns: '1fr 1fr 1fr 1fr' }}>
+          <label>ID<input placeholder="recife" value={cidForm.id} disabled={!!cidEditando} onChange={(e) => setCidForm({ ...cidForm, id: e.target.value.toLowerCase().trim() })} /></label>
+          <label>Nome<input placeholder="Recife" value={cidForm.nome} onChange={(e) => setCidForm({ ...cidForm, nome: e.target.value })} /></label>
+          <label>UF<input placeholder="PE" value={cidForm.uf} onChange={(e) => setCidForm({ ...cidForm, uf: e.target.value.toUpperCase() })} /></label>
+          <label>Fuso<input placeholder="America/Recife" value={cidForm.fuso} onChange={(e) => setCidForm({ ...cidForm, fuso: e.target.value })} /></label>
+        </div>
+        {cidMsg && <p className={`spot-msg ${cidMsg.tipo === 'ok' ? 'ok' : 'erro'}`}>{cidMsg.texto}</p>}
+        <div className="toolbar" style={{ marginTop: 8, marginBottom: 0 }}>
+          <button onClick={salvarCidade}>{cidEditando ? 'Salvar alterações' : 'Cadastrar cidade'}</button>
+          {cidEditando && <button className="ghost" onClick={() => { setCidEditando(null); setCidForm({ id: '', nome: '', uf: '', fuso: 'America/Maceio' }); }}>Cancelar edição</button>}
+        </div>
+      </div>
+    </>
+  );
+
+  // Tema: salva paleta e reaplica
+  const salvarTemaAtual = async (restaurar = false) => {
+    setTemaMsg(null);
+    try {
+      const r = await salvarTema(restaurar ? {} : tema.vars, restaurar);
+      setTema((t) => ({ ...t, vars: r.vars }));
+      setTemaMsg({ tipo: 'ok', texto: restaurar ? 'Paleta padrão restaurada.' : 'Paleta salva e aplicada.' });
+    } catch (e: any) { setTemaMsg({ tipo: 'erro', texto: e.message }); }
+  };
+
   // Menu de LEDs: incluir / editar / excluir
   const salvarLed = async () => {
     setLedMsg(null);
@@ -571,8 +716,8 @@ export default function App() {
           <div className="pill">📅 {dash.periodo}</div>
           {can('leds') && <button className="pill" style={{ cursor: 'pointer' }} onClick={() => { setLedsMenu(true); setLedMsg(null); }} title="Cadastro de LEDs (8 espaços por painel)">📺 LEDs</button>}
           {can('reservas') && <button className="pill" style={{ cursor: 'pointer' }} onClick={abrirReservasMenu} title="Cadastro de reservas (múltiplos períodos por campanha)">🗓️ Reservas</button>}
-          {can('cidades') && <button className="pill" style={{ cursor: 'pointer' }} onClick={() => { setCidMenu(true); setCidMsg(null); }} title="Cadastro de cidades (id, nome, UF, fuso)">🏙️ Cidades</button>}
-          {can('usuarios') && <button className="pill" style={{ cursor: 'pointer' }} onClick={abrirUsersMenu} title="Controle de acesso: quem vê o quê">👥 Usuários</button>}
+          {tela === 'painel' && temConfig && <button className="pill" style={{ cursor: 'pointer' }} onClick={() => setTela('config')} title="Tela de configurações: acesso, cidades e cores">⚙️ Configuração</button>}
+          {tela === 'config' && <button className="pill" style={{ cursor: 'pointer' }} onClick={() => setTela('painel')} title="Voltar ao painel">← Voltar</button>}
           {perfil && <div className="pill" title="Perfil do usuário (spec §9.2)">👤 {perfil}{isAdmin ? ' · admin' : ''}</div>}
           <div style={{ position: 'relative' }}>
             {can('notificacoes') && (
@@ -604,6 +749,8 @@ export default function App() {
 
         <div className="breadcrumb">Todas as cidades <span>→</span> <b>{cidadeNome(cidade)}</b>{ledSel && (<><span>→</span> <b>{ledSel}</b></>)}</div>
 
+        {tela === 'painel' && (
+        <>
         <div className="grid">
           <div className="card">
             <h2>OCUPAÇÃO POR LED</h2>
@@ -700,7 +847,7 @@ export default function App() {
           </div>
         </div>
 
-        <div className="card" style={{ marginBottom: 18 }}>
+        <div className="card" ref={painelRef} style={{ marginBottom: 18, scrollMarginTop: 12 }}>
           <div className="tabs">
             <div className={`tab ${tab === 'dashboard' ? 'active' : ''}`} onClick={() => setTab('dashboard')}>Dashboard</div>
             {(can('planilha') || !online) && <div className={`tab ${tab === 'planilha' ? 'active' : ''}`} onClick={() => setTab('planilha')}>Visualizar como planilha</div>}
@@ -748,7 +895,7 @@ export default function App() {
                           <td>{r.cidade}</td><td>{r.led}</td>
                           <td><input defaultValue={r.anunciante} onBlur={(e) => salvarInline(r, 'anunciante', e.target.value)} /></td>
                           <td>{br(r.inicio)}</td><td>{br(r.fim)}</td>
-                          <td><span className="status-dot" style={{ background: STATUS_COR[r.status] || '#888' }} />{STATUS_ROTULO[r.status] || r.status}
+                          <td><span className="status-dot" style={{ background: corStatus(r.status) }} />{STATUS_ROTULO[r.status] || r.status}
                             {r.status === 'a_vencer' && r.fim !== '—' && (() => {
                               const d = diasAte(r.fim);
                               const txt = d > 0 ? ` · ${d}d` : ' · encerra hoje';
@@ -778,7 +925,7 @@ export default function App() {
                         <td>{r.cidade}</td><td>{r.led}</td>
                         <td>{r.anunciante}</td>
                         <td>{br(r.inicio)}</td><td>{br(r.fim)}</td>
-                        <td><span className="status-dot" style={{ background: STATUS_COR[r.status] || '#888' }} />{STATUS_ROTULO[r.status] || r.status}</td>
+                        <td><span className="status-dot" style={{ background: corStatus(r.status) }} />{STATUS_ROTULO[r.status] || r.status}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -801,7 +948,7 @@ export default function App() {
                     <td>{r.cidade}</td><td>{r.led}</td>
                     <td style={r.status === 'livre' ? { color: 'var(--muted)' } : undefined}>{r.anunciante}</td>
                     <td>{br(r.inicio)}</td><td>{br(r.fim)}</td>
-                    <td><span className="status-dot" style={{ background: STATUS_COR[r.status] || '#888' }} />{STATUS_ROTULO[r.status] || r.status}</td>
+                    <td><span className="status-dot" style={{ background: corStatus(r.status) }} />{STATUS_ROTULO[r.status] || r.status}</td>
                   </tr>
                 ))}
               </tbody>
@@ -813,19 +960,19 @@ export default function App() {
               <div><h2 style={{ fontSize: '.85rem' }}>EVOLUÇÃO MENSAL (%)</h2>
                 <ResponsiveContainer width="100%" height={220}>
                   <LineChart data={dash.evolucao_mensal}>
-                    <CartesianGrid stroke="#232d4a" strokeDasharray="3 3" />
-                    <XAxis dataKey="mes" stroke="#8b93ab" fontSize={11} /><YAxis stroke="#8b93ab" fontSize={11} domain={[40, 80]} />
-                    <Tooltip contentStyle={{ background: '#0f1730', border: '1px solid #232d4a' }} />
-                    <Line type="monotone" dataKey="ocupacao" stroke="#2dd4bf" strokeWidth={2} />
+                    <CartesianGrid stroke={tema.vars.border || "#232d4a"} strokeDasharray="3 3" />
+                    <XAxis dataKey="mes" stroke={tema.vars.muted || "#8b93ab"} fontSize={11} /><YAxis stroke={tema.vars.muted || "#8b93ab"} fontSize={11} domain={[40, 80]} />
+                    <Tooltip contentStyle={{ background: tema.vars.panel2 || "#0f1730", border: `1px solid ${tema.vars.border || "#232d4a"}` }} />
+                    <Line type="monotone" dataKey="ocupacao" stroke={tema.vars.teal || "#2dd4bf"} strokeWidth={2} />
                   </LineChart>
                 </ResponsiveContainer></div>
               <div><h2 style={{ fontSize: '.85rem' }}>OCUPAÇÃO POR CIDADE (%)</h2>
                 <ResponsiveContainer width="100%" height={220}>
                   <BarChart data={dash.ocupacao_por_cidade}>
-                    <CartesianGrid stroke="#232d4a" strokeDasharray="3 3" />
-                    <XAxis dataKey="cidade" stroke="#8b93ab" fontSize={10} /><YAxis stroke="#8b93ab" fontSize={11} />
-                    <Tooltip contentStyle={{ background: '#0f1730', border: '1px solid #232d4a' }} />
-                    <Bar dataKey="valor" fill="#2dd4bf" radius={[6, 6, 0, 0]} />
+                    <CartesianGrid stroke={tema.vars.border || "#232d4a"} strokeDasharray="3 3" />
+                    <XAxis dataKey="cidade" stroke={tema.vars.muted || "#8b93ab"} fontSize={10} /><YAxis stroke={tema.vars.muted || "#8b93ab"} fontSize={11} />
+                    <Tooltip contentStyle={{ background: tema.vars.panel2 || "#0f1730", border: `1px solid ${tema.vars.border || "#232d4a"}` }} />
+                    <Bar dataKey="valor" fill={tema.vars.teal || "#2dd4bf"} radius={[6, 6, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer></div>
             </div>
@@ -840,6 +987,51 @@ export default function App() {
             </>
           )}
         </div>
+        </>)}
+
+          {tela === 'config' && temConfig && (
+            <div className="card" style={{ marginBottom: 18 }}>
+              <h2>CONFIGURAÇÕES</h2>
+              <p className="sub">Acesso de usuários, cidades e cores do projeto.</p>
+              <div className="tabs">
+                {can('usuarios') && <div className={`tab ${configSecao === 'acesso' ? 'active' : ''}`} onClick={() => setConfigSecao('acesso')}>Acesso</div>}
+                {can('cidades') && <div className={`tab ${configSecao === 'cidades' ? 'active' : ''}`} onClick={() => setConfigSecao('cidades')}>Cidades</div>}
+                {can('config') && <div className={`tab ${configSecao === 'tema' ? 'active' : ''}`} onClick={() => setConfigSecao('tema')}>Cores</div>}
+              </div>
+              {configSecao === 'acesso' && can('usuarios') && (
+                <>
+                  <p className="sub">Defina por usuário: perfil, <b>cidades que pode ver</b> e <b>recursos extras</b> além do perfil. Sem cidade vinculada = todas.</p>
+                  {conteudoUsuarios()}
+                </>
+              )}
+              {configSecao === 'cidades' && can('cidades') && (
+                <>
+                  <p className="sub">Conforme a tabela cidades: id, nome, UF e fuso. Exclusão só de cidade vazia (sem LEDs).</p>
+                  {conteudoCidades()}
+                </>
+              )}
+              {configSecao === 'tema' && can('config') && (
+                <>
+                  <p className="sub">Paleta do projeto: fundo, fontes, destaques e gráficos. Aplica na hora em todo o painel.</p>
+                  <div className="perm-grid">
+                    {Object.keys(tema.rotulos).map((k) => (
+                      <label key={k} className="check">{tema.rotulos[k]}
+                        <input type="color" value={tema.vars[k] || '#000000'}
+                          onChange={(e) => setTema((t) => ({ ...t, vars: { ...t.vars, [k]: e.target.value } }))} />
+                        <small style={{ color: 'var(--muted)' }}>{tema.vars[k]}</small>
+                      </label>
+                    ))}
+                  </div>
+                  {Object.keys(tema.vars).length === 0 && <p className="sub">Carregando paleta…</p>}
+                  {temaMsg && <p className={`spot-msg ${temaMsg.tipo === 'ok' ? 'ok' : 'erro'}`}>{temaMsg.texto}</p>}
+                  <div className="toolbar" style={{ marginTop: 8, marginBottom: 0 }}>
+                    <button onClick={() => salvarTemaAtual(false)}>Salvar cores</button>
+                    <button className="ghost" onClick={() => salvarTemaAtual(true)}>Restaurar padrão</button>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
 
         <footer>
           <span>LATÊNCIA DE DADOS: {lat} · TODOS OS PAINÉIS REPORTANDO{online ? '' : ' · MODO OFFLINE (mockup)'}</span>
@@ -929,116 +1121,6 @@ export default function App() {
             )}
             <div className="toolbar" style={{ marginTop: 12, marginBottom: 0 }}>
               <button className="ghost" onClick={() => setResMenu(null)}>Fechar</button>
-            </div>
-          </div>
-        </div>
-      )}
-      {usersMenu && can('usuarios') && (
-        <div className="modal-bg" onClick={() => { setUsersMenu(false); setUserEditando(null); }}>
-          <div className="card modal modal-lg" onClick={(e) => e.stopPropagation()}>
-            <h2>CONTROLE DE ACESSO — USUÁRIOS</h2>
-            <p className="sub">Defina por usuário: perfil, <b>cidades que pode ver</b> e <b>recursos extras</b> além do perfil. Sem cidade vinculada = todas.</p>
-            <div className="table-scroll">
-            <table>
-              <thead><tr><th>Login</th><th>Nome</th><th>Perfil</th><th>Cidades</th><th>Recursos</th><th>Ações</th></tr></thead>
-              <tbody>
-                {usersLista.map((u: any) => (
-                  <tr key={u.login}>
-                    <td><b>{u.login}</b></td><td>{u.nome}</td><td>{u.perfil}</td>
-                    <td style={{ fontSize: '.7rem' }}>{u.cidades.length ? u.cidades.join(', ') : 'todas'}</td>
-                    <td style={{ fontSize: '.7rem' }}>{u.efetivas.join(', ')}</td>
-                    <td className="row-actions">
-                      <button onClick={() => { setUserEditando(u.login); setUserForm({ login: u.login, senha: '', perfil: u.perfil, nome: u.nome, cidades: u.cidades, permissoes: u.permissoes }); }}>Editar</button>
-                      <button className="danger" onClick={() => excluirUsuario(u.login)}>Excluir</button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            </div>
-            <div className="spot-form">
-              <h2 style={{ fontSize: '.85rem' }}>{userEditando ? `EDITAR ${userEditando}` : '＋ NOVO USUÁRIO'}</h2>
-              <div className="spot-row">
-                <label>Login<input value={userForm.login} disabled={!!userEditando} onChange={(e) => setUserForm({ ...userForm, login: e.target.value })} /></label>
-                <label>{userEditando ? 'Nova senha (vazio mantém)' : 'Senha'}<input type="password" value={userForm.senha} onChange={(e) => setUserForm({ ...userForm, senha: e.target.value })} /></label>
-                <label>Perfil
-                  <select value={userForm.perfil} onChange={(e) => setUserForm({ ...userForm, perfil: e.target.value })}>
-                    <option value="admin">admin</option>
-                    <option value="regional">regional</option>
-                    <option value="operador">operador</option>
-                    <option value="visualizador">visualizador</option>
-                  </select>
-                </label>
-              </div>
-              <label>Nome<input value={userForm.nome} onChange={(e) => setUserForm({ ...userForm, nome: e.target.value })} /></label>
-              <label>Cidades que pode ver (vazio = todas)
-                <div className="perm-grid">
-                  {(cidades.length ? cidades : [{ id: 'aracaju', nome: 'Aracaju' }]).map((c: any) => (
-                    <label key={c.id} className="check"><input type="checkbox"
-                      checked={userForm.cidades.includes(c.id)}
-                      onChange={() => setUserForm({ ...userForm, cidades: alternar(userForm.cidades, c.id) })} />{c.nome}</label>
-                  ))}
-                </div>
-              </label>
-              <label>Recursos extras além do perfil
-                <div className="perm-grid">
-                  {recursosLista.map((r) => (
-                    <label key={r.id} className="check"><input type="checkbox"
-                      checked={userForm.permissoes.includes(r.id)}
-                      onChange={() => setUserForm({ ...userForm, permissoes: alternar(userForm.permissoes, r.id) })} />{r.rotulo}</label>
-                  ))}
-                </div>
-              </label>
-              {userMsg && <p className={`spot-msg ${userMsg.tipo === 'ok' ? 'ok' : 'erro'}`}>{userMsg.texto}</p>}
-              <div className="toolbar" style={{ marginTop: 8, marginBottom: 0 }}>
-                <button onClick={salvarUsuario}>{userEditando ? 'Salvar alterações' : 'Criar usuário'}</button>
-                {userEditando && <button className="ghost" onClick={() => { setUserEditando(null); setUserForm({ login: '', senha: '', perfil: 'visualizador', nome: '', cidades: [], permissoes: [] }); }}>Cancelar edição</button>}
-              </div>
-            </div>
-            <div className="toolbar" style={{ marginTop: 12, marginBottom: 0 }}>
-              <button className="ghost" onClick={() => { setUsersMenu(false); setUserEditando(null); }}>Fechar</button>
-            </div>
-          </div>
-        </div>
-      )}
-      {cidMenu && can('cidades') && (
-        <div className="modal-bg" onClick={() => { setCidMenu(false); setCidEditando(null); }}>
-          <div className="card modal modal-lg" onClick={(e) => e.stopPropagation()}>
-            <h2>CADASTRO DE CIDADES</h2>
-            <p className="sub">Conforme a tabela cidades: id, nome, UF e fuso. Exclusão só de cidade vazia (sem LEDs).</p>
-            <div className="table-scroll">
-            <table>
-              <thead><tr><th>ID</th><th>Nome</th><th>UF</th><th>Fuso</th><th>Ações</th></tr></thead>
-              <tbody>
-                {(cidades.length ? cidades : []).map((c: any) => (
-                  <tr key={c.id}>
-                    <td><b>{c.id}</b></td><td>{c.nome}</td><td>{c.uf}</td><td style={{ fontSize: '.7rem' }}>{c.fuso}</td>
-                    <td className="row-actions">
-                      <button onClick={() => { setCidEditando(c.id); setCidForm({ id: c.id, nome: c.nome, uf: c.uf || '', fuso: c.fuso || 'America/Maceio' }); }}>Editar</button>
-                      <button className="danger" onClick={() => excluirCidade(c.id)}>Excluir</button>
-                    </td>
-                  </tr>
-                ))}
-                {cidades.length === 0 && <tr><td colSpan={5} style={{ color: 'var(--muted)' }}>Nenhuma cidade cadastrada.</td></tr>}
-              </tbody>
-            </table>
-            </div>
-            <div className="spot-form">
-              <h2 style={{ fontSize: '.85rem' }}>{cidEditando ? `EDITAR ${cidEditando}` : '＋ NOVA CIDADE'}</h2>
-              <div className="spot-row" style={{ gridTemplateColumns: '1fr 1fr 1fr 1fr' }}>
-                <label>ID<input placeholder="recife" value={cidForm.id} disabled={!!cidEditando} onChange={(e) => setCidForm({ ...cidForm, id: e.target.value.toLowerCase().trim() })} /></label>
-                <label>Nome<input placeholder="Recife" value={cidForm.nome} onChange={(e) => setCidForm({ ...cidForm, nome: e.target.value })} /></label>
-                <label>UF<input placeholder="PE" value={cidForm.uf} onChange={(e) => setCidForm({ ...cidForm, uf: e.target.value.toUpperCase() })} /></label>
-                <label>Fuso<input placeholder="America/Recife" value={cidForm.fuso} onChange={(e) => setCidForm({ ...cidForm, fuso: e.target.value })} /></label>
-              </div>
-              {cidMsg && <p className={`spot-msg ${cidMsg.tipo === 'ok' ? 'ok' : 'erro'}`}>{cidMsg.texto}</p>}
-              <div className="toolbar" style={{ marginTop: 8, marginBottom: 0 }}>
-                <button onClick={salvarCidade}>{cidEditando ? 'Salvar alterações' : 'Cadastrar cidade'}</button>
-                {cidEditando && <button className="ghost" onClick={() => { setCidEditando(null); setCidForm({ id: '', nome: '', uf: '', fuso: 'America/Maceio' }); }}>Cancelar edição</button>}
-              </div>
-            </div>
-            <div className="toolbar" style={{ marginTop: 12, marginBottom: 0 }}>
-              <button className="ghost" onClick={() => { setCidMenu(false); setCidEditando(null); }}>Fechar</button>
             </div>
           </div>
         </div>

@@ -29,9 +29,8 @@ restante; tooltip com período e status; **selo `x/8 espaços`** por painel) ·
 Distribuição por status (rosca Recharts com % reais: veiculando vs. reservadas
 vs. livres) · Ocupação por cidade (barras de inventário: veiculando+reservadas ÷ 8) · A vencer (só `a_vencer`) + **A iniciar**
 (`agendada` + reservas próximas, com estados vazios próprios) ·
-Abas **Dashboard / Visualizar como planilha / Gráficos / Reservas** (rosca→linha
-e barras Recharts na aba Gráficos) · footer com latência medida do fetch e
-período dinâmico.
+Abas **Dashboard / Visualizar como planilha / Gráficos / Reservas** (rosca→linha e barras Recharts na aba Gráficos) · footer com
+latência medida do fetch e período dinâmico.
 
 ## Comportamentos que importam
 
@@ -51,9 +50,13 @@ período dinâmico.
 - **Menu 📺 LEDs** (recurso `leds`): tabela de painéis com `x/8 espaços`,
   **＋ Novo LED** (código, endereço, cidade), **Editar** (renomear move tudo
   junto) e **Excluir** (só LED vazio).
-- **Menu 👥 Usuários** (recurso `usuarios`): tabela (login, perfil, cidades,
-  recursos efetivos) + criar/editar (senha, perfil, cidades por checkbox,
-  recursos extras por checkbox) + excluir (com travas do back).
+- **Tela Configurações** (botão topbar ⚙️ + ← Voltar; recurso `usuarios`, `cidades` ou `config`): troca o painel, com seções
+  **Acesso** (controle de usuários), **Cidades** (cadastro) e **Cores** (paleta); sem seção
+  permitida, volta ao painel.
+- **Tema**: paleta lida de `/api/tema` e aplicada nas variáveis CSS (painel,
+  fontes, Gantt, dots via `corStatus()`); gráficos Recharts usam os valores
+  (rosca vem com as cores da API); formulário com color picker por variável +
+  Salvar/Restaurar padrão.
 - **Planilha com CRUD + importação + reservas**: botão **＋ Nova campanha**,
   coluna **Ações** (Editar, **Reservas**, Excluir); modal Reservas lista os
   períodos com o anunciante de cada um e adiciona/exclui (anunciante vazio =
@@ -75,8 +78,8 @@ período dinâmico.
 - **Exports** (`.xlsx`/`.csv`) levam cidade + busca + status + token atuais.
 - **Offline**: sem API, `FALLBACK_DASH` + linhas do mockup (badge `OFFLINE`);
   login com erro entra em modo offline de leitura.
-- Sessão em `localStorage` (`led_token`, `led_perfil`); sininho abre a central
-  com "Marcar como lida".
+- Sessão em `localStorage` (`led_token`, `led_perfil`); 401 com token velho desloga sozinho (volta ao login); sininho abre a central
+  com "Marcar como lida". Navegação da topbar rola até o painel.
 
 ## Build
 

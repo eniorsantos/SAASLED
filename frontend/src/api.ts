@@ -1,4 +1,4 @@
-// Cliente da API (VITE_API_URL ou proxy /api). Com fallback offline fiel ao mockup.
+﻿// Cliente da API (VITE_API_URL ou proxy /api). Com fallback offline fiel ao mockup.
 export const API = (import.meta as any).env?.VITE_API_URL || '';
 
 async function req<T>(path: string, opts: RequestInit = {}): Promise<T> {
@@ -11,6 +11,15 @@ async function req<T>(path: string, opts: RequestInit = {}): Promise<T> {
       ...(opts.headers || {}),
     },
   });
+  // Sessão inválida/expirada: volta ao login em vez de fingir logado
+  if (r.status === 401 && token && token !== 'offline' && !path.startsWith('/api/auth/')) {
+    localStorage.removeItem('led_token');
+    localStorage.removeItem('led_perfil');
+    if (!location.href.includes('#sessao-expirada')) {
+      location.hash = 'sessao-expirada';
+      location.reload();
+    }
+  }
   if (!r.ok) throw new Error((await r.json().catch(() => ({})) as any).erro || `HTTP ${r.status}`);
   return r.json() as Promise<T>;
 }
@@ -88,6 +97,7 @@ export const api = {
   modeloImportUrl: `${API}/api/import/modelo.csv`,
   importarPlanilha: (csv: string) =>
     req<{ total: number; criadas: number; reservas_criadas: number; ignoradas: { linha: number; anunciante: string; motivo: string }[] }>('/api/import/planilha', { method: 'POST', body: JSON.stringify({ csv }) }),
+  tema: () => req<{ vars: Record<string, string>; rotulos: Record<string, string> }>('/api/tema'),
 };
 
 // Fallback offline — valores literais do mockup-led-saas
@@ -123,14 +133,23 @@ export const FALLBACK_DASH: Dashboard = {
   ],
 };
 
-export const STATUS_COR: Record<string, string> = {
-  veiculando: '#2dd4bf', 'Veiculando': '#2dd4bf',
-  a_vencer: '#f5943a', 'A vencer': '#f5943a',
-  agendada: '#4f8ff7', 'Agendada': '#4f8ff7',
-  reservada: '#8b7cf6', 'Reservada': '#8b7cf6',
-  vencida: '#f0546a', 'Vencida': '#f0546a',
-  livre: '#3a4468', 'Livre': '#3a4468',
+// Cor de status lida das variáveis CSS — acompanha o tema configurado
+const COR_VAR: Record<string, string> = {
+  veiculando: '--teal', Veiculando: '--teal',
+  a_vencer: '--orange', 'A vencer': '--orange',
+  agendada: '--blue', Agendada: '--blue',
+  reservada: '--purple', Reservada: '--purple',
+  vencida: '--red', Vencida: '--red',
+  livre: '--muted', Livre: '--muted',
 };
+export const corStatus = (s: string): string => {
+  const v = COR_VAR[s] || '--muted';
+  try {
+    return getComputedStyle(document.documentElement).getPropertyValue(v).trim() || '#888';
+  } catch { return '#888'; }
+};
+export const salvarTema = (vars: Record<string, string>, restaurar = false) =>
+  req<{ vars: Record<string, string> }>('/api/tema', { method: 'PUT', body: JSON.stringify({ vars, restaurar }) });
 export const STATUS_ROTULO: Record<string, string> = {
   veiculando: 'Veiculando', a_vencer: 'A vencer', agendada: 'Agendada',
   reservada: 'Reservada', vencida: 'Vencida', livre: 'Livre',

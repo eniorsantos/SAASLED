@@ -32,7 +32,10 @@ nas cores/elementos de `mockup-led-saas`.
   independentes): múltiplos períodos futuros por campanha, cada um com seu
   anunciante e toast de início próximo.
 - Menu **👥 Usuários**: por usuário, define cidades visíveis + recursos extras.
-- Menu **🏙️ Cidades**: incluir, editar (id fixo) e excluir (só vazia).- Aba planilha com **＋ Nova campanha**, **Editar/Reservas/Excluir** por linha,
+- Menu **🏙️ Cidades**: incluir, editar (id fixo) e excluir (só vazia).
+- **Tela Configurações** (botão ⚙️ + ← Voltar): Acesso + Cidades + **Cores** (paleta do projeto:
+  fundo, fontes, destaques e gráficos, com restaurar padrão).
+- Aba planilha com **＋ Nova campanha**, **Editar/Reservas/Excluir** por linha,
   **⬆ Importar** (padrão da exportação + reservas) e **Modelo**.
 
 ## Rodar

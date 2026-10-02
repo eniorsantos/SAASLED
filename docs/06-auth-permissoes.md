@@ -15,6 +15,7 @@ Seed: `admin/admin123` · `regional/reg123` (vinculado a `aracaju`) ·
 
 Recursos (12): `dashboard, planilha, graficos, leds, cidades, campanhas_editar,
 reservas, importar, exportar, notificacoes, usuarios, config` (`GET /api/recursos`).
+O recurso `config` cobre limites, paleta (`/api/tema`) e define quem abre a seção Cores.
 
 | Perfil | Padrão |
 |--------|--------|
