@@ -76,8 +76,8 @@ latência medida do fetch e período dinâmico.
   sem resultado mostram estado vazio — nunca linhas de outra cidade.
 - **Edição inline** da planilha usa o `id` da linha (`PUT /api/campanhas/:id`).
 - **Exports** (`.xlsx`/`.csv`) levam cidade + busca + status + token atuais.
-- **Offline**: sem API, `FALLBACK_DASH` + linhas do mockup (badge `OFFLINE`);
-  login com erro entra em modo offline de leitura.
+- **Offline**: sem API, telas vazias com aviso (badge `OFFLINE`, zeros e estados
+  vazios — nenhum dado fictício); login com erro entra em modo offline de leitura.
 - Sessão em `localStorage` (`led_token`, `led_perfil`); 401 com token velho desloga sozinho (volta ao login); sininho abre a central
   com "Marcar como lida". Navegação da topbar rola até o painel.
 

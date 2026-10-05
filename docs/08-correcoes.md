@@ -265,3 +265,7 @@ ormalizarAnunciante() em todas as escritas e nas chaves de grupo (Dup X = Dup X 
 ## PUT estourava FOREIGN KEY
 
 - Editar campanha/reserva para anunciante novo quebrava (FOREIGN KEY constraint failed, pois só o POST criava o anunciante) + spot aceitava campanha inexistente. Agora PUTs criam o anunciante e spot valida (400); smoke cobre.
+
+## Offline sem dados fictícios
+
+- FALLBACK_DASH neutro (zeros/vazio), toasts iniciais vazios, tabelas com aviso Sem dados - API offline; breadcrumb padrão Todas.

@@ -46,13 +46,13 @@ cd frontend; npm install; npm run dev   # painel
 ```
 
 Login demo: `admin/admin123` (admin), `viewer/view123` (somente leitura).
-Sem API no ar, o painel cai para o fallback offline com os valores literais do mockup.
+Sem API no ar, o painel mostra telas vazias com aviso (badge `OFFLINE`).
 
 ## Documentação (`docs/`)
 
 | Doc | Conteúdo |
 |-----|----------|
-| [01 — Visão geral](docs/01-visao-geral.md) | stack, pastas, como rodar, envs, convenções (hoje simulado, fallback offline) |
+| [01 — Visão geral](docs/01-visao-geral.md) | stack, pastas, como rodar, envs, convenções (data real, fallback vazio) |
 | [02 — Modelo de dados](docs/02-modelo-de-dados.md) | tabelas, seed, migrações, validações (spec §2+§9) |
 | [03 — Regras de negócio](docs/03-regras-de-negocio.md) | status, ocupação, toasts, grade, capacidade, importação, reservas |
 | [04 — API](docs/04-api.md) | todos os endpoints (inclui usuários, reservas, import), auth, exemplos |

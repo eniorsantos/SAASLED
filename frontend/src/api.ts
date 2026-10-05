@@ -100,37 +100,16 @@ export const api = {
   tema: () => req<{ vars: Record<string, string>; rotulos: Record<string, string> }>('/api/tema'),
 };
 
-// Fallback offline — valores literais do mockup-led-saas
+// Fallback offline: estrutura neutra VAZIA (sem dados fictícios — nada de Aracaju mockado)
 export const FALLBACK_DASH: Dashboard = {
-  hoje: '2026-10-25', periodo: 'Outubro 2026',
-  kpis: { ocupacao_media: 72.4, leds_ativos: '4/4', a_vencer_7d: 2, livres: 1 },
-  distribuicao: [
-    { name: 'Veiculando', value: 55, color: '#2dd4bf' },
-    { name: 'Reservada', value: 25, color: '#8b7cf6' },
-    { name: 'Livre', value: 20, color: '#3a4468' },
-  ],
-  evolucao_mensal: [
-    { mes: 'Mai', ocupacao: 58 }, { mes: 'Jun', ocupacao: 61 }, { mes: 'Jul', ocupacao: 66 },
-    { mes: 'Ago', ocupacao: 64 }, { mes: 'Set', ocupacao: 70 }, { mes: 'Out', ocupacao: 72.4 },
-  ],
-  ocupacao_por_cidade: [
-    { cidade: 'ARACAJU', id: 'aracaju', valor: 72 },
-    { cidade: 'SALVADOR', id: 'salvador', valor: 0 },
-    { cidade: 'NOVA CIDADE', id: '', valor: 0 },
-  ],
-  gantt_por_led: [
-    { codigo: 'AJU 01', endereco: 'Silvio Teixeira', cidade_id: 'aracaju', espacos_usados: 2, espacos_total: 8, campanhas: [{ anunciante: 'Atakarejo', inicio: '2026-02-10', fim: '2027-04-09', status: 'veiculando' }, { anunciante: 'Boticário', inicio: '2026-11-14', fim: '2026-11-28', status: 'agendada' }] },
-    { codigo: 'AJU 02', endereco: 'Tancredo Neves', cidade_id: 'aracaju', espacos_usados: 1, espacos_total: 8, campanhas: [{ anunciante: 'Vita', inicio: '2026-08-01', fim: '2026-12-20', status: 'veiculando' }] },
-    { codigo: 'AJU 03', endereco: 'Adélia Franco', cidade_id: 'aracaju', espacos_usados: 2, espacos_total: 8, campanhas: [{ anunciante: 'Jardins Delicatessen', inicio: '2026-09-01', fim: '2027-01-31', status: 'veiculando' }, { anunciante: 'Hospital dos Olhos', inicio: '2026-10-20', fim: '2026-10-31', status: 'a_vencer' }] },
-    { codigo: 'AJU 04', endereco: 'Francisco Porto', cidade_id: 'aracaju', espacos_usados: 2, espacos_total: 8, campanhas: [{ anunciante: 'São Braz', inicio: '2026-07-10', fim: '2026-12-10', status: 'veiculando' }, { anunciante: 'Rede Primavera', inicio: '2026-10-27', fim: '2026-11-14', status: 'agendada' }] },
-  ],
-  a_vencer_lista: [
-    { anunciante: 'Boticário', led: 'AJU 01', status: 'A vencer' },
-    { anunciante: 'Hospital dos Olhos', led: 'AJU 03', status: 'A vencer' },
-  ],
-  a_iniciar_lista: [
-    { anunciante: 'Rede Primavera', led: 'AJU 04', status: 'Agendada' },
-  ],
+  hoje: '', periodo: '—',
+  kpis: { ocupacao_media: 0, leds_ativos: '0/0', a_vencer_7d: 0, livres: 0 },
+  distribuicao: [],
+  evolucao_mensal: [],
+  ocupacao_por_cidade: [],
+  gantt_por_led: [],
+  a_vencer_lista: [],
+  a_iniciar_lista: [],
 };
 
 // Cor de status lida das variáveis CSS — acompanha o tema configurado

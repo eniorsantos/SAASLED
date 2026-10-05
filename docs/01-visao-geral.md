@@ -71,4 +71,4 @@ Variáveis de ambiente:
 - **"Hoje" = data real** (`hojeISO()`; `HOJE` só para simular). O período de
   referência do dashboard e a evolução mensal seguem o mês do "hoje".
 - **Sem API no ar, o painel funciona offline**: `api.ts` tem `FALLBACK_DASH`
-  com os valores literais do mockup (72,4%, 4/4, rosca 55/25/20 etc.).
+  neutro (zeros e listas vazias — nenhum dado fictício) com badge `OFFLINE`.
