@@ -58,6 +58,8 @@ antes dessas features continuam funcionando.
 - Grade: sem interseção de intervalos no mesmo LED/dia → salva; com choque →
   exige autorização admin (doc 03).
 - Anunciante é **normalizado** (trim + espaços colapsados) em todas as escritas
-  — `Dup X` e `Dup X  ` são o mesmo cliente (e agrupam no mesmo toast).
+  — `Dup X` e `Dup X  ` são o mesmo cliente (e agrupam no mesmo toast) — e
+  **criado sob demanda** em todo PUT (nunca estoura FK); spot exige campanha
+  existente (`400`).
 - Reservas: sem interseção com a campanha nem entre irmãs; 8 espaços/LED só
   contam campanhas (reservas não consomem espaço).

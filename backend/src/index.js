@@ -291,6 +291,7 @@ app.put('/api/campanhas/:id', auth(), requer('campanhas_editar'), (req, res) => 
     if (!usados.includes(nx.anunciante) && usados.length >= cfg2.max_clientes_por_led)
       return res.status(409).json({ erro: `LED ${nx.led_codigo} lotado: ${usados.length}/${cfg2.max_clientes_por_led} espaços ocupados`, espacos: { usados: usados.length, total: cfg2.max_clientes_por_led } });
   }
+  db.prepare('INSERT OR IGNORE INTO anunciantes (nome) VALUES (?)').run(nx.anunciante);
   db.prepare('UPDATE campanhas SET anunciante=?,inicio=?,fim=?,reservada=?,led_codigo=?,cidade_id=? WHERE id=?')
     .run(nx.anunciante, nx.inicio, nx.fim, nx.reservada ? 1 : 0, nx.led_codigo, nx.cidade_id, req.params.id);
   log(req.user.login, 'campanha.update', req.params.id);
@@ -383,6 +384,7 @@ app.put('/api/reservas/:id', auth(), requer('reservas'), (req, res) => {
   if (nx.inicio > nx.fim) return res.status(400).json({ erro: 'início posterior ao fim' });
   // rotação: sem checagem de choque (ver POST)
   db.prepare('INSERT OR IGNORE INTO anunciantes (nome) VALUES (?)').run(nx.anunciante);
+  db.prepare('INSERT OR IGNORE INTO anunciantes (nome) VALUES (?)').run(nx.anunciante);
   db.prepare('UPDATE reservas SET inicio = ?, fim = ?, anunciante = ? WHERE id = ?')
     .run(nx.inicio, nx.fim, nx.anunciante, req.params.id);
   log(req.user.login, 'reserva.update', `${req.params.id} (${nx.anunciante} ${nx.inicio} → ${nx.fim})`);
@@ -409,6 +411,8 @@ app.post('/api/programacoes', auth(), podeEditar, (req, res) => {
     return res.status(400).json({ erro: 'id, campanha_id, led_codigo, horario_inicio obrigatórios' });
   const ledCidade = cidadeDoLed(led_codigo);
   if (!ledCidade) return res.status(400).json({ erro: `LED "${led_codigo}" não cadastrado` });
+  if (!db.prepare('SELECT * FROM campanhas WHERE id = ?').get(campanha_id))
+    return res.status(400).json({ erro: `campanha "${campanha_id}" não encontrada` });
   if (!escopoCidadeOk(req.user, ledCidade))
     return res.status(403).json({ erro: ERRO_ESCOPO });
   if (!R.validarHorario(horario_inicio))

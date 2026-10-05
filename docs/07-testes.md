@@ -30,6 +30,8 @@ $env:DB_PATH = '.\test-smoke.db'; npm test; Remove-Item .\test-smoke.db
 11. importação: 2 válidas + 2 reservas (rotação) criadas; 3 ignoradas
     (LED inexistente, duplicada, data inválida); modelo com colunas de reserva;
 12. vencida passou do último dia: fim=hoje → `a_vencer`; fim=ontem → `vencida`;
+    FK sem estouro: PUT com anunciante novo (campanha e reserva) cria o
+    anunciante; spot com campanha inexistente → 400;
 13. acesso por usuário: `/api/me` do admin, criar `teste` (visualizador +
     aracaju + `exportar`), login dele, vínculo respeitado (salvador vazia),
     escrita sem `campanhas_editar` → 403, auto-exclusão `409`, exclusão OK;

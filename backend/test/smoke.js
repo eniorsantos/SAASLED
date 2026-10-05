@@ -169,6 +169,19 @@ const server = app.listen(0, async () => {
     assert.ok(nots.some((n) => n.corpo.includes('Reserva de Parceiro X')), 'toast usa o anunciante da reserva');
     for (const id of [rA.json.id, rB.json.id, rC.json.id, rD.json.id])
       assert.equal((await fetch(base + '/api/reservas/' + id, { method: 'DELETE', headers: { Authorization: 'Bearer ' + login.token } })).status, 200, 'reserva excluída');
+    // FK: anunciante novo no PUT (campanha e reserva) + campanha inexistente no spot
+    assert.equal((await fetch(base + '/api/campanhas/cap-g1', { method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + login.token },
+      body: JSON.stringify({ anunciante: 'FK Novo' }) })).status, 200, 'PUT com anunciante novo não quebra FK');
+    assert.equal((await get('/api/campanhas')).find((c) => c.id === 'cap-g1').anunciante, 'FK Novo', 'anunciante criado e vinculado');
+    const rFk = await postRes('c4', { inicio: '2026-12-01', fim: '2026-12-10' });
+    assert.equal((await fetch(base + '/api/reservas/' + rFk.json.id, { method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + login.token },
+      body: JSON.stringify({ anunciante: 'FK Reserva' }) })).status, 200, 'PUT reserva com anunciante novo');
+    assert.equal((await fetch(base + '/api/reservas/' + rFk.json.id, { method: 'DELETE', headers: { Authorization: 'Bearer ' + login.token } })).status, 200, 'limpeza reserva FK');
+    assert.equal((await (await fetch(base + '/api/programacoes', { method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + login.token },
+      body: JSON.stringify({ id: 's-fk', campanha_id: 'inexistente', led_codigo: 'AJU 01', horario_inicio: '08:00' }) })).status), 400, 'spot com campanha inexistente → 400 (sem estouro)');
     // agrupamento: mesmo anunciante + mesmo início = 1 toast com os LEDs
     assert.equal((await ledPost({ codigo: 'TST G1', endereco: 'Rua G1', cidade_id: 'salvador' })).status, 201, 'LED grupo 1');
     assert.equal((await ledPost({ codigo: 'TST G2', endereco: 'Rua G2', cidade_id: 'salvador' })).status, 201, 'LED grupo 2');

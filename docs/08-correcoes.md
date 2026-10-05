@@ -257,3 +257,11 @@ ormalizarAnunciante() em todas as escritas e nas chaves de grupo (Dup X = Dup X 
 ## A vencer contava campanhas, não LEDs
 
 - KPI somava campanhas (20, com LEDs repetidos 3x); agora conta painéis distintos (14).
+
+## Mais gráficos na distribuição por status
+
+- Seletor Rosca/Pizza/Barras horizontais no card (mesmos dados, tema aplicado).
+
+## PUT estourava FOREIGN KEY
+
+- Editar campanha/reserva para anunciante novo quebrava (FOREIGN KEY constraint failed, pois só o POST criava o anunciante) + spot aceitava campanha inexistente. Agora PUTs criam o anunciante e spot valida (400); smoke cobre.

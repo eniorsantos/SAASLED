@@ -55,6 +55,8 @@ export default function App() {
   const [importMsg, setImportMsg] = useState<{ tipo: 'ok' | 'erro'; texto: string } | null>(null);
   // Toasts dispensados nesta sessão (voltam no próximo login/refresh)
   const [dismissed, setDismissed] = useState<(number | string)[]>([]);
+  // Tipo de gráfico da distribuição por status
+  const [tipoDist, setTipoDist] = useState<'rosca' | 'pizza' | 'barras'>('rosca');
   // Navegação: troca a aba e rola até o painel (senão parece que nada aconteceu)
   const painelRef = useRef<HTMLDivElement>(null);
   const irParaAba = (t: Tab, secao?: SecaoConfig) => {
@@ -783,10 +785,17 @@ export default function App() {
           <div className="card">
             <h2>DISTRIBUIÇÃO POR STATUS</h2>
             <p className="sub">Ocupação geral da rede no período.</p>
+            <div className="toolbar" style={{ marginBottom: 4 }}>
+              {([['rosca', 'Rosca'], ['pizza', 'Pizza'], ['barras', 'Barras']] as const).map(([id, lb]) => (
+                <button key={id} className={tipoDist === id ? undefined : 'ghost'} onClick={() => setTipoDist(id)}>{lb}</button>
+              ))}
+            </div>
+            {tipoDist !== 'barras' ? (
             <div className="donutwrap">
               <ResponsiveContainer width={170} height={170}>
                 <PieChart>
-                  <Pie data={dash.distribuicao} dataKey="value" nameKey="name" innerRadius={52} outerRadius={72} paddingAngle={2} strokeWidth={0}>
+                  <Pie data={dash.distribuicao} dataKey="value" nameKey="name"
+                    innerRadius={tipoDist === 'rosca' ? 52 : 0} outerRadius={72} paddingAngle={2} strokeWidth={0}>
                     {dash.distribuicao.map((d) => <Cell key={d.name} fill={d.color} />)}
                   </Pie>
                   <Tooltip />
@@ -796,6 +805,19 @@ export default function App() {
                 {dash.distribuicao.map((d) => <div key={d.name}><span className="dot" style={{ background: d.color }} />{d.name}<b>{d.value}%</b></div>)}
               </div>
             </div>
+            ) : (
+            <ResponsiveContainer width="100%" height={170}>
+              <BarChart data={dash.distribuicao} layout="vertical">
+                <CartesianGrid stroke={tema.vars.border || "#232d4a"} strokeDasharray="3 3" />
+                <XAxis type="number" stroke={tema.vars.muted || "#8b93ab"} fontSize={11} domain={[0, 100]} />
+                <YAxis type="category" dataKey="name" stroke={tema.vars.muted || "#8b93ab"} fontSize={11} width={80} />
+                <Tooltip contentStyle={{ background: tema.vars.panel2 || "#0f1730", border: `1px solid ${tema.vars.border || "#232d4a"}` }} />
+                <Bar dataKey="value" radius={[0, 6, 6, 0]}>
+                  {dash.distribuicao.map((d) => <Cell key={d.name} fill={d.color} />)}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+            )}
           </div>
         </div>
 
