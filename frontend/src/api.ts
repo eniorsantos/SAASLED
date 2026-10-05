@@ -26,7 +26,7 @@ async function req<T>(path: string, opts: RequestInit = {}): Promise<T> {
 
 export interface Dashboard {
   hoje: string; periodo: string;
-  kpis: { ocupacao_media: number; leds_ativos: string; a_vencer_7d: number; livres: number };
+  kpis: { ocupacao_media: number; leds_ativos: string; a_vencer_7d: number; livres: number; espacos_total: number };
   distribuicao: { name: string; value: number; color: string }[];
   evolucao_mensal: { mes: string; ocupacao: number }[];
   ocupacao_por_cidade: { cidade: string; id: string; valor: number }[];
@@ -105,7 +105,7 @@ export const api = {
 // Fallback offline: estrutura neutra VAZIA (sem dados fictícios — nada de Aracaju mockado)
 export const FALLBACK_DASH: Dashboard = {
   hoje: '', periodo: '—',
-  kpis: { ocupacao_media: 0, leds_ativos: '0/0', a_vencer_7d: 0, livres: 0 },
+  kpis: { ocupacao_media: 0, leds_ativos: '0/0', a_vencer_7d: 0, livres: 0, espacos_total: 0 },
   distribuicao: [],
   evolucao_mensal: [],
   ocupacao_por_cidade: [],

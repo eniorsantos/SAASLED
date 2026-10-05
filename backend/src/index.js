@@ -504,7 +504,7 @@ app.get('/api/dashboard', authOpcional, (req, res) => {
     .filter((c) => filtro.length === 0 || filtro.includes(c.id));
   res.json({
     hoje: R.hojeISO(), periodo: PERIODO,
-    kpis: { ocupacao_media: ocupMedia, leds_ativos: `${leds.length}/${totalLeds}`, a_vencer_7d: aVencer, livres },
+    kpis: { ocupacao_media: ocupMedia, leds_ativos: `${leds.length}/${totalLeds}`, a_vencer_7d: aVencer, livres, espacos_total: leds.length * cfg.max_clientes_por_led },
     distribuicao: distV,
     evolucao_mensal: R.ultimos6Meses(R.hojeISO()).map(({ mes, ini, fim }) => {
       const vals = leds.map((l) => R.ocupacao(camps.filter((c) => c.led_codigo === l.codigo), ini, fim));

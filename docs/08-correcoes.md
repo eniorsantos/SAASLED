@@ -277,3 +277,7 @@ ormalizarAnunciante() em todas as escritas e nas chaves de grupo (Dup X = Dup X 
 ## Card A vencer divergia do topo
 
 - Topbar contava LEDs, card listava campanhas cortadas em 10 e em janela menor (status 5d vs 7d). Agora mesma janela 0-7d, sem corte (rolagem), com dias por linha e contagem N campanhas em M LEDs (M = KPI).
+
+## Disponíveis mostra livres/total
+
+- KPI com espacos_total (LEDs x 8, respeita filtro); topbar exibe livres/total espaços.

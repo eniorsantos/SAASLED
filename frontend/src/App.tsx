@@ -719,7 +719,7 @@ export default function App() {
             <div className="kpi"><label>OCUPAÇÃO MÉDIA</label><b>{dash.kpis.ocupacao_media}%</b></div>
             <div className="kpi"><label>LEDS ATIVOS</label><b>{dash.kpis.leds_ativos}</b></div>
             <div className="kpi"><label>A VENCER (7D)</label><b style={{ color: 'var(--orange)' }}>{dash.kpis.a_vencer_7d}</b></div>
-            <div className="kpi"><label>DISPONÍVEIS</label><b style={{ color: 'var(--teal)' }}>{dash.kpis.livres}</b></div>
+            <div className="kpi"><label>DISPONÍVEIS</label><b style={{ color: 'var(--teal)' }}>{dash.kpis.livres}<small>/{dash.kpis.espacos_total} espaços</small></b></div>
           </div>
           <div className="select">🏙️ Cidade:{' '}
             <select value={cidade} onChange={(e) => trocarCidade(e.target.value)}>

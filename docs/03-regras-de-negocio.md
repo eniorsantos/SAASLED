@@ -28,7 +28,8 @@ período (usa `Set`, então campanhas sobrepostas no mesmo LED não contam dobro
 O dashboard usa duas leituras: **KPI/evolução** (dias no mês do "hoje",
 spec §4.3) e **ocupação por cidade + rosca** (inventário: anunciantes
 **veiculando + reservadas**, i.e. não-vencidas, ÷ `max_clientes_por_led` —
-o KPI **DISPONÍVEIS** é o total de espaços livres Σ(8−usados), e a rosca
+o KPI **DISPONÍVEIS** é o total de espaços livres Σ(8−usados) — exibido como
+`livres/total` (`espacos_total` = LEDs × 8) — e a rosca
 reparte os mesmos slots em veiculando/reservados/livres). A evolução usa os
 **últimos 6 meses** reais; o KPI "A vencer" conta **LEDs distintos** com alguma
 campanha com `fim−hoje ∈ [0, 7]` (um LED com 3 vencimentos vale 1).
