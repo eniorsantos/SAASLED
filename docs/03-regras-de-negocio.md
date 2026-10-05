@@ -4,7 +4,9 @@ Código puro e testável em `backend/src/regras.js` (sem I/O).
 
 ## 3.1 Status de campanha (spec §3)
 
-`statusCampanha(c, cfg, hoje)` — `hoje` = data real (`HOJE` só p/ simular):
+`statusCampanha(c, cfg, hoje)` — `hoje` = data real (`HOJE` só p/ simular),
+derivado **só das datas** (a flag `reservada` da planilha é informativa e nunca
+sobrepõe um período em curso):
 
 | Status        | Regra                                                        |
 |---------------|--------------------------------------------------------------|
@@ -24,10 +26,12 @@ hoje global).
 `ocupacao(campanhas, pIni, pFim)` = dias distintos cobertos ÷ dias totais do
 período (usa `Set`, então campanhas sobrepostas no mesmo LED não contam dobro).
 O dashboard usa duas leituras: **KPI/evolução** (dias no mês do "hoje",
-spec §4.3) e **ocupação por cidade** (inventário comprometido = anunciantes
-**veiculando + reservadas**, i.e. não-vencidas, ÷ `max_clientes_por_led`,
-média dos LEDs — reflete o comercial independente do mês). A evolução usa os
-**últimos 6 meses** reais; o KPI "A vencer" conta `fim−hoje ∈ [0, 7]`.
+spec §4.3) e **ocupação por cidade + rosca** (inventário: anunciantes
+**veiculando + reservadas**, i.e. não-vencidas, ÷ `max_clientes_por_led` —
+o KPI **DISPONÍVEIS** é o total de espaços livres Σ(8−usados), e a rosca
+reparte os mesmos slots em veiculando/reservados/livres). A evolução usa os
+**últimos 6 meses** reais; o KPI "A vencer" conta **LEDs distintos** com alguma
+campanha com `fim−hoje ∈ [0, 7]` (um LED com 3 vencimentos vale 1).
 
 ## 3.3 Notificações toast (spec §4.1)
 

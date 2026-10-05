@@ -241,3 +241,19 @@ ormalizarAnunciante() em todas as escritas e nas chaves de grupo (Dup X = Dup X 
 ## Config vira tela cheia
 
 - Botao topbar Configuracao + Voltar; 	ela troca o painel (Acesso/Cidades/Cores dentro); botoes Usuarios/Cidades da topbar removidos; tab config removida.
+
+## Flag reservada sobrepunha período em curso
+
+- 6 campanhas no ar (ex.: São Braz até 30/10) exibiam Agendada porque a flag eservada=1 prevalecia. Status agora deriva só das datas; flag virou informativa.
+
+## Aba Dashboard mostrava só 8 linhas
+
+- linhas.slice(0, 8) sem estado vazio. Agora lista tudo com rolagem, contador e mensagem de vazio.
+
+## Disponíveis contava painéis vazios
+
+- KPI media só LEDs 100% vazios (0 ou 1) ignorando 166 espaços livres nos 8 espaços/LED. Agora soma os espaços livres; rosca usa os mesmos slots (veiculando/reservados/livres).
+
+## A vencer contava campanhas, não LEDs
+
+- KPI somava campanhas (20, com LEDs repetidos 3x); agora conta painéis distintos (14).

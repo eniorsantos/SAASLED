@@ -935,24 +935,38 @@ export default function App() {
           )}
 
           {tab === 'dashboard' && (
-            <table>
+            <>
+              <p className="sub">
+                {online
+                  ? `${linhas.length} campanha(s) no período · ${dash.periodo}`
+                  : `Demonstração offline · ${dash.periodo}`}
+              </p>
+              <div style={{ overflowX: 'auto', maxHeight: 440, overflowY: 'auto' }}>
+              <table>
               <thead><tr><th>Cidade</th><th>LED</th><th>Anunciante</th><th>Início</th><th>Fim</th><th>Status</th></tr></thead>
               <tbody>
-                {(online ? linhas.slice(0, 8) : [
+                {(online ? linhas : [
                   { cidade: 'Aracaju', led: 'AJU 01', anunciante: 'Atakarejo', inicio: '2026-02-10', fim: '2027-04-09', status: 'veiculando' },
                   { cidade: 'Aracaju', led: 'AJU 01', anunciante: 'Boticário', inicio: '2026-11-14', fim: '2026-11-28', status: 'a_vencer' },
                   { cidade: 'Aracaju', led: 'AJU 04', anunciante: 'Rede Primavera', inicio: '2026-10-27', fim: '2026-11-14', status: 'agendada' },
                   { cidade: 'Aracaju', led: 'AJU 02', anunciante: '— disponível —', inicio: '—', fim: '—', status: 'livre' },
                 ]).map((r, i) => (
-                  <tr key={i}>
+                  <tr key={r.id || i}>
                     <td>{r.cidade}</td><td>{r.led}</td>
                     <td style={r.status === 'livre' ? { color: 'var(--muted)' } : undefined}>{r.anunciante}</td>
                     <td>{br(r.inicio)}</td><td>{br(r.fim)}</td>
                     <td><span className="status-dot" style={{ background: corStatus(r.status) }} />{STATUS_ROTULO[r.status] || r.status}</td>
                   </tr>
                 ))}
+                {online && linhas.length === 0 && (
+                  <tr><td colSpan={6} style={{ color: 'var(--muted)', textAlign: 'center' }}>
+                    Nenhuma campanha para os filtros atuais.
+                  </td></tr>
+                )}
               </tbody>
-            </table>
+              </table>
+              </div>
+            </>
           )}
 
           {tab === 'graficos' && (can('graficos') || !online) && (

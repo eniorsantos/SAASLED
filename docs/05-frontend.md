@@ -29,7 +29,7 @@ restante; tooltip com período e status; **selo `x/8 espaços`** por painel) ·
 Distribuição por status (rosca Recharts com % reais: veiculando vs. reservadas
 vs. livres) · Ocupação por cidade (barras de inventário: veiculando+reservadas ÷ 8) · A vencer (só `a_vencer`) + **A iniciar**
 (`agendada` + reservas próximas, com estados vazios próprios) ·
-Abas **Dashboard / Visualizar como planilha / Gráficos / Reservas** (rosca→linha e barras Recharts na aba Gráficos) · footer com
+Abas **Dashboard (todas as linhas, com rolagem e contador) / Visualizar como planilha / Gráficos / Reservas** (rosca→linha
 latência medida do fetch e período dinâmico.
 
 ## Comportamentos que importam

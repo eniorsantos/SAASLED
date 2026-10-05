@@ -60,10 +60,12 @@ function ultimos6Meses(hoje = hojeISO()) {
   return out;
 }
 // Veiculando: hoje ∈ [início, fim] · Início próximo: início−hoje ≤ N(7) ·
-// Vencimento próximo: fim−hoje ≤ N(5) · Vencida: passou do último dia (fim < hoje) · Livre: sem campanha
+// Vencimento próximo: fim−hoje ≤ N(5) · Vencida: passou do último dia (fim < hoje) · Livre: sem campanha.
+// O status deriva SÓ das datas: a flag `reservada` (origem: coluna da planilha)
+// nunca sobrepõe um período em curso — campanha no ar é veiculando.
 function statusCampanha(c, cfg, hoje = hojeISO()) {
   if (c.fim < hoje) return 'vencida';
-  if (Number(c.reservada) === 1 || c.inicio > hoje)
+  if (c.inicio > hoje)
     return diasEntre(c.inicio, hoje) <= cfg.n_inicio_proximo ? 'agendada' : 'reservada';
   return diasEntre(c.fim, hoje) <= cfg.n_vencimento_proximo ? 'a_vencer' : 'veiculando';
 }

@@ -450,17 +450,33 @@ app.get('/api/dashboard', authOpcional, (req, res) => {
   const { ini: P_INI, fim: P_FIM, rotulo: PERIODO } = R.periodoReferencia(R.hojeISO());
   const porLed = leds.map((l) => R.ocupacao(camps.filter((c) => c.led_codigo === l.codigo), P_INI, P_FIM));
   const ocupMedia = porLed.length ? +(porLed.reduce((a, b) => a + b, 0) / porLed.length).toFixed(1) : 0;
-  const aVencer = comSt.filter((c) => { const d = R.diasEntre(c.fim, R.hojeISO()); return d >= 0 && d <= 7 && c.inicio <= R.hojeISO(); }).length;
-  const comCampanha = new Set(comSt.filter((c) => c.status !== 'vencida').map((c) => c.led_codigo));
-  const livres = Math.max(0, leds.length - comCampanha.size);
+  // LEDs a vencer: painéis distintos com alguma campanha vencendo em 0–7 dias
+  // (antes contava campanhas — um LED com 3 vencimentos valia 3)
+  const aVencer = new Set(comSt
+    .filter((c) => { const d = R.diasEntre(c.fim, R.hojeISO()); return d >= 0 && d <= 7 && c.inicio <= R.hojeISO(); })
+    .map((c) => c.led_codigo)).size;
+  // Disponibilidade = ESPAÇOS livres (8 − usados por LED), não painéis vazios
+  const livres = leds.reduce((acc, l) => {
+    const usados = new Set(comSt.filter((c) => c.led_codigo === l.codigo && c.status !== 'vencida').map((c) => c.anunciante)).size;
+    return acc + Math.max(0, cfg.max_clientes_por_led - usados);
+  }, 0);
   const tema = temaVars();
-  // Rosca real: campanhas veiculando vs. reservadas + LEDs livres (era fixa 55/25/20)
-  const nVeic = comSt.filter((c) => ['veiculando', 'a_vencer'].includes(c.status)).length;
-  const nRes = comSt.filter((c) => ['agendada', 'reservada'].includes(c.status)).length;
-  const totDist = Math.max(1, nVeic + nRes + livres);
+  // Rosca de inventário: slots veiculando vs. reservados vs. livres (coerente com o KPI)
+  let sV = 0, sR = 0;
+  for (const l of leds) {
+    const porAnu = new Map();
+    for (const c of comSt.filter((cc) => cc.led_codigo === l.codigo && cc.status !== 'vencida')) {
+      const cls = ['veiculando', 'a_vencer'].includes(c.status) ? 'v' : 'r';
+      if (porAnu.get(c.anunciante) !== 'v') porAnu.set(c.anunciante, cls);
+    }
+    sV += [...porAnu.values()].filter((x) => x === 'v').length;
+    sR += porAnu.size - [...porAnu.values()].filter((x) => x === 'v').length;
+  }
+  const sL = livres; // Σ(8 − usados) — mesmo número do KPI
+  const totDist = Math.max(1, sV + sR + sL);
   const pct = (n) => Math.round((n / totDist) * 100);
-  const distV = [{ name: 'Veiculando', value: pct(nVeic), color: tema.teal },
-    { name: 'Reservada', value: pct(nRes), color: tema.purple },
+  const distV = [{ name: 'Veiculando', value: pct(sV), color: tema.teal },
+    { name: 'Reservada', value: pct(sR), color: tema.purple },
     { name: 'Livre', value: 0, color: tema.border }];
   distV[2].value = Math.max(0, 100 - distV[0].value - distV[1].value);
   const cidades = db.prepare('SELECT * FROM cidades').all()

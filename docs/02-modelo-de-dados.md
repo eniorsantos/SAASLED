@@ -37,7 +37,7 @@ SEED parcial), cria-se o admin de resgate `admin/admin123`. Seed idempotente
 
 - Cidades: `aracaju` (Aracaju/SE), `salvador` (Salvador/BA, sem LEDs — mostra o estado vazio multi-cidade).
 - LEDs: AJU 01 Silvio Teixeira · AJU 02 Tancredo Neves · AJU 03 Adélia Franco · AJU 04 Francisco Porto.
-- Campanhas `c1…c8`: Atakarejo (longa, veiculando), Boticário (reservada), Vita, Diniz Fonseca (vencida no "hoje" simulado), Jardins Delicatessen, Hospital dos Olhos (a vencer), São Braz, Rede Primavera (agendada).
+- Campanhas `c1…c8`: Atakarejo (longa), Boticário (reservada), Vita, Diniz Fonseca, Jardins Delicatessen, Hospital dos Olhos, São Braz, Rede Primavera (status calculados pela data — smoke fixa `HOJE=2026-10-25`).
 - Spots `s1…s3`: grade da AJU 01 de segunda (07:00/07:15/07:30).
 - Reserva `r1`: Jardins (c5) com período futuro extra (02/2027).
 - Usuários: `admin/admin123`, `regional/reg123` (vinculado a `aracaju`), `operador/op123`, `viewer/view123`.
