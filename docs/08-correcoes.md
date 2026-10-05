@@ -269,3 +269,11 @@ ormalizarAnunciante() em todas as escritas e nas chaves de grupo (Dup X = Dup X 
 ## Offline sem dados fictícios
 
 - FALLBACK_DASH neutro (zeros/vazio), toasts iniciais vazios, tabelas com aviso Sem dados - API offline; breadcrumb padrão Todas.
+
+## Exclusão múltipla na planilha
+
+- Checkbox por linha + cabeçalho (visíveis), botão Excluir N com confirmação e relatório; DELETE /api/campanhas em lote com escopo por item; seleção limpa ao trocar filtro/cidade.
+
+## Card A vencer divergia do topo
+
+- Topbar contava LEDs, card listava campanhas cortadas em 10 e em janela menor (status 5d vs 7d). Agora mesma janela 0-7d, sem corte (rolagem), com dias por linha e contagem N campanhas em M LEDs (M = KPI).

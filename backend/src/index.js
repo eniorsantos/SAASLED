@@ -306,6 +306,23 @@ app.delete('/api/campanhas/:id', auth(), requer('campanhas_editar'), (req, res) 
   log(req.user.login, 'campanha.delete', req.params.id);
   res.json({ ok: true });
 });
+// Exclusão em lote: {ids: []} — exclui as do escopo, lista as ignoradas
+app.delete('/api/campanhas', auth(), requer('campanhas_editar'), (req, res) => {
+  const { ids } = req.body || {};
+  if (!Array.isArray(ids) || !ids.length)
+    return res.status(400).json({ erro: 'envie {ids: [...]}' });
+  const excluidas = [], ignoradas = [];
+  const del = db.prepare('DELETE FROM campanhas WHERE id = ?');
+  for (const id of new Set(ids)) {
+    const cur = db.prepare('SELECT * FROM campanhas WHERE id = ?').get(id);
+    if (!cur) { ignoradas.push({ id, motivo: 'não encontrada' }); continue; }
+    if (!escopoCidadeOk(req.user, cur.cidade_id)) { ignoradas.push({ id, motivo: ERRO_ESCOPO }); continue; }
+    del.run(id);
+    excluidas.push(id);
+  }
+  log(req.user.login, 'campanha.delete.lote', `excluidas=${excluidas.length} ids=${excluidas.join(',')}`);
+  res.json({ excluidas, ignoradas });
+});
 
 // — Reservas múltiplas: cada campanha pode ter N períodos futuros reservados —
 // cada reserva gera seu toast de início próximo na varredura (§4.1)
@@ -511,19 +528,19 @@ app.get('/api/dashboard', authOpcional, (req, res) => {
         ...c, reservas: reservasDaCampanha(c.id, c.anunciante),
       })),
     })),
+    // Mesma janela do KPI (0–7 dias): campanhas (card) + LEDs distintos (KPI)
     a_vencer_lista: comSt
-      .filter((c) => c.status === 'a_vencer')
-      .map((c) => ({ anunciante: c.anunciante, led: c.led_codigo, status: 'A vencer' }))
-      .slice(0, 10),
+      .filter((c) => { const d = R.diasEntre(c.fim, R.hojeISO()); return d >= 0 && d <= 7 && c.inicio <= R.hojeISO(); })
+      .map((c) => ({ anunciante: c.anunciante, led: c.led_codigo, status: 'A vencer', dias: R.diasEntre(c.fim, R.hojeISO()), fim: c.fim })),
     a_iniciar_lista: [
       ...comSt
         .filter((c) => c.status === 'agendada')
-        .map((c) => ({ anunciante: c.anunciante, led: c.led_codigo, status: 'Agendada' })),
+        .map((c) => ({ anunciante: c.anunciante, led: c.led_codigo, status: 'Agendada', dias: R.diasEntre(c.inicio, R.hojeISO()), inicio: c.inicio })),
       ...comSt.flatMap((c) =>
         reservasDaCampanha(c.id, c.anunciante)
           .filter((r) => { const d = R.diasEntre(r.inicio, R.hojeISO()); return d >= 0 && d <= cfg.n_inicio_proximo; })
-          .map((r) => ({ anunciante: `${r.anunciante} (reserva)`, led: c.led_codigo, status: 'Agendada' }))),
-    ].slice(0, 10),
+          .map((r) => ({ anunciante: `${r.anunciante} (reserva)`, led: c.led_codigo, status: 'Agendada', dias: R.diasEntre(r.inicio, R.hojeISO()), inicio: r.inicio }))),
+    ],
   });
 });
 

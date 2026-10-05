@@ -75,6 +75,7 @@ tr.destaque td{background:rgba(45,212,191,.14);animation:piscar 1s ease-in-out 3
 .toolbar input,.toolbar select{background:var(--panel2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:6px 10px;font-size:.75rem}
 .toolbar button{background:rgba(45,212,191,.12);border:1px solid rgba(45,212,191,.4);color:var(--teal);border-radius:8px;padding:6px 12px;font-size:.75rem;cursor:pointer;font-weight:700}
 .toolbar button.ghost{background:var(--panel2);border-color:var(--border);color:var(--muted)}
+.toolbar button.danger{background:rgba(240,84,106,.12);border-color:rgba(240,84,106,.4);color:var(--red)}
 .breadcrumb{font-size:.72rem;color:var(--muted);margin-bottom:14px}
 .breadcrumb b{color:var(--teal)}
 .breadcrumb span{margin:0 6px}

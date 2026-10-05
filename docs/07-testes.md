@@ -37,6 +37,7 @@ $env:DB_PATH = '.\test-smoke.db'; npm test; Remove-Item .\test-smoke.db
     escrita sem `campanhas_editar` → 403, auto-exclusão `409`, exclusão OK;
 14. reservas múltiplas: 3 criadas em rotação (+1 com anunciante próprio e seu
     toast), toast `Reserva de …` verificado, exclusão OK;
+    lote: 2 válidas + 1 inexistente (relatório), 401 sem login, 400 vazio;
 15. menu de reservas: lista global com cidade, criar, editar (PUT com novo
     anunciante + filtro `?led=`), excluir; viewer sem `reservas` → 403;
 16. agrupamento de toasts: 2 LEDs com mesmo anunciante+início → 1 toast

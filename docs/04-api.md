@@ -41,6 +41,7 @@ Legenda de auth: 🔓 pública · 🔑 login · ✏️ admin/regional/operador �
 | POST | `/api/campanhas` | `campanhas_editar` | `{id, cidade_id, led_codigo, anunciante, inicio, fim, reservada?}`; 400 p/ data inválida, `inicio>fim`, LED inexistente ou cidade≠cidade do LED · **409 LED lotado** (`{usados,total}`, 8 espaços) · 403 fora do escopo |
 | PUT | `/api/campanhas/:id` | `campanhas_editar` | edição parcial (usada pelo inline da planilha); troca de LED/anunciante revalida a lotação (ignorando a própria campanha) |
 | DELETE | `/api/campanhas/:id` | `campanhas_editar` | - |
+| DELETE | `/api/campanhas` | `campanhas_editar` | lote `{ids: []}` → `{excluidas[], ignoradas[{id, motivo}]}` (escopo por item) |
 | GET | `/api/campanhas/:id/reservas` | 🔓 (+escopo: 403 fora do vínculo) | N períodos futuros (cada um com seu `anunciante`) |
 | POST | `/api/campanhas/:id/reservas` | `reservas` | `{inicio, fim, anunciante?}` (vazio = o da campanha); rotação sem choque; cada reserva notifica o início (doc 03 §3.8) |
 | GET | `/api/reservas` | 🔓 (+escopo) | menu global: `?cidades=`, `?led=`, `?campanha_id=`; cada item traz `anunciante`, `led_codigo`, `cidade_id/nome` |
@@ -58,8 +59,7 @@ Legenda de auth: 🔓 pública · 🔑 login · ✏️ admin/regional/operador �
 
 | Método | Rota | Auth | Resposta |
 |--------|------|------|----------|
-| GET | `/api/dashboard?cidades=` | 🔓 (+escopo) | `{hoje, periodo, kpis{...}, distribuicao[3], evolucao_mensal[6], ocupacao_por_cidade[] (inventário: não-vencidas ÷ 8 por LED), gantt_por_led[] (cada LED com `espacos_usados/espacos_total`; cada campanha com `reservas[]`), a_vencer_lista[] (só `a_vencer`), a_iniciar_lista[] (`agendada` + reservas próximas)}` |
-eservas[]), a_vencer_lista[] (só _vencer), a_iniciar_lista[] (gendada + reservas próximas)} |
+| GET | `/api/dashboard?cidades=` | 🔓 (+escopo) | `{hoje, periodo, kpis{...}, distribuicao[3] (slots), evolucao_mensal[6], ocupacao_por_cidade[] (inventario), gantt_por_led[] (espacos + `reservas[]`), a_vencer_lista[] (janela 0-7d, sem corte, com `dias`), a_iniciar_lista[] (`agendada` + reservas, com `dias`)}` |
 | GET | `/api/planilha?cidades=&status=&q=` | 🔓 (+escopo) | `[{id, cidade, led, anunciante, inicio, fim, status}]` |
 | GET | `/api/export/planilha.csv?...` | `exportar` | mesmos filtros da planilha (+`?token=`); `;`-separado com BOM |
 | GET | `/api/export/planilha.xlsx?...` | `exportar` | mesmos filtros (+`?token=`); aba `Veiculação` |

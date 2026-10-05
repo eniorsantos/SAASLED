@@ -31,8 +31,8 @@ export interface Dashboard {
   evolucao_mensal: { mes: string; ocupacao: number }[];
   ocupacao_por_cidade: { cidade: string; id: string; valor: number }[];
   gantt_por_led: { codigo: string; endereco: string; cidade_id: string; campanhas: any[]; espacos_usados?: number; espacos_total?: number }[];
-  a_vencer_lista: { anunciante: string; led: string; status: string }[];
-  a_iniciar_lista: { anunciante: string; led: string; status: string }[];
+  a_vencer_lista: { anunciante: string; led: string; status: string; dias?: number; fim?: string }[];
+  a_iniciar_lista: { anunciante: string; led: string; status: string; dias?: number; inicio?: string }[];
 }
 export interface PlanilhaRow { id?: string; cidade: string; led: string; anunciante: string; inicio: string; fim: string; status: string }
 export interface Notif { id: number; titulo: string; corpo: string; lida: boolean; evento: string; campanha_id: string; anunciante?: string; led?: string; campanha_ref?: string }
@@ -78,6 +78,8 @@ export const api = {
   campanhas: () => req<any[]>('/api/campanhas'),
   criarCampanha: (body: any) => req('/api/campanhas', { method: 'POST', body: JSON.stringify(body) }),
   excluirCampanha: (id: string) => req('/api/campanhas/' + id, { method: 'DELETE' }),
+  excluirLote: (ids: string[]) =>
+    req<{ excluidas: string[]; ignoradas: { id: string; motivo: string }[] }>('/api/campanhas', { method: 'DELETE', body: JSON.stringify({ ids }) }),
   editarCampanha: (id: string, body: any) => req('/api/campanhas/' + id, { method: 'PUT', body: JSON.stringify(body) }),
   exportUrl: (fmt: 'csv' | 'xlsx', cidades = '', q = '', status = '') =>
     `${API}/api/export/planilha.${fmt}?cidades=${encodeURIComponent(cidades)}&q=${encodeURIComponent(q)}${status ? `&status=${status}` : ''}&token=${localStorage.getItem('led_token') || ''}`,

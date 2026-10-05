@@ -53,6 +53,23 @@ export default function App() {
   const [rows, setRows] = useState<PlanilhaRow[]>([]);
   const [q, setQ] = useState(''); const [stFilter, setStFilter] = useState('');
   const [importMsg, setImportMsg] = useState<{ tipo: 'ok' | 'erro'; texto: string } | null>(null);
+  // Seleção múltipla da planilha (exclusão em lote)
+  const [selecionadas, setSelecionadas] = useState<string[]>([]);
+  const alternarSelecao = (id: string) =>
+    setSelecionadas((xs) => (xs.includes(id) ? xs.filter((x) => x !== id) : [...xs, id]));
+  const excluirSelecionadas = async () => {
+    if (!selecionadas.length) return;
+    if (!confirm(`Excluir ${selecionadas.length} campanha(s)?`)) return;
+    try {
+      const r = await api.excluirLote(selecionadas);
+      setSelecionadas([]);
+      setImportMsg({
+        tipo: r.ignoradas.length ? 'erro' : 'ok',
+        texto: `Excluídas ${r.excluidas.length}.${r.ignoradas.length ? ` Ignoradas: ${r.ignoradas.map((x) => `${x.id} (${x.motivo})`).join(' · ')}` : ''}`,
+      });
+      carregar();
+    } catch (e: any) { setImportMsg({ tipo: 'erro', texto: e.message }); }
+  };
   // Toasts dispensados nesta sessão (voltam no próximo login/refresh)
   const [dismissed, setDismissed] = useState<(number | string)[]>([]);
   // Tipo de gráfico da distribuição por status
@@ -187,7 +204,7 @@ export default function App() {
   const cidadeNome = (id: string) => cidadesOpts.find((c) => c.id === id)?.nome || id || 'Todas';
 
   const trocarCidade = (v: string) => {
-    setCidade(v);
+    setCidade(v); setSelecionadas([]);
     setDismissed([]);
     // LED selecionado fora da cidade sai da seleção
     if (ledSel) {
@@ -835,34 +852,40 @@ export default function App() {
           </div>
 
           <div className="card">
-            <h2>CAMPANHAS — A VENCER</h2>
-            <p className="sub">Próximos 7 dias · fim − hoje ≤ 5d.</p>
+            <h2>CAMPANHAS — A VENCER ({dash.a_vencer_lista.length})</h2>
+            <p className="sub">{dash.a_vencer_lista.length} campanhas em {new Set(dash.a_vencer_lista.map((a) => a.led)).size} LEDs · fim − hoje ≤ 7d (mesma base do topo).</p>
+            <div style={{ overflowX: 'auto', maxHeight: 220, overflowY: 'auto' }}>
             <table>
               <thead><tr><th>Anunciante</th><th>LED</th><th>Status</th></tr></thead>
               <tbody>
-                {(dash.a_vencer_lista.length ? dash.a_vencer_lista : []).map((a, i) => (
+                {dash.a_vencer_lista.map((a, i) => (
                   <tr key={i}><td>{a.anunciante}</td><td>{a.led}</td>
-                    <td><span className="status-dot" style={{ background: 'var(--orange)' }} />{a.status}</td></tr>
+                    <td><span className="status-dot" style={{ background: 'var(--orange)' }} />{a.status}
+                      {a.dias !== undefined && <small style={{ color: 'var(--muted)' }}> · {a.dias === 0 ? 'hoje' : `${a.dias}d`}</small>}</td></tr>
                 ))}
                 {dash.a_vencer_lista.length === 0 && (
                   <tr><td colSpan={3} style={{ color: 'var(--muted)' }}>Nenhuma vencendo no período.</td></tr>
                 )}
               </tbody>
             </table>
-            <h2 style={{ marginTop: 16 }}>CAMPANHAS — A INICIAR</h2>
+            </div>
+            <h2 style={{ marginTop: 16 }}>CAMPANHAS — A INICIAR ({(dash.a_iniciar_lista || []).length})</h2>
             <p className="sub">Início próximo · início − hoje ≤ 7d.</p>
+            <div style={{ overflowX: 'auto', maxHeight: 220, overflowY: 'auto' }}>
             <table>
               <thead><tr><th>Anunciante</th><th>LED</th><th>Status</th></tr></thead>
               <tbody>
                 {(dash.a_iniciar_lista || []).map((a, i) => (
                   <tr key={i}><td>{a.anunciante}</td><td>{a.led}</td>
-                    <td><span className="status-dot" style={{ background: 'var(--blue)' }} />{a.status}</td></tr>
+                    <td><span className="status-dot" style={{ background: 'var(--blue)' }} />{a.status}
+                      {a.dias !== undefined && <small style={{ color: 'var(--muted)' }}> · em {a.dias}d</small>}</td></tr>
                 ))}
                 {(dash.a_iniciar_lista || []).length === 0 && (
                   <tr><td colSpan={3} style={{ color: 'var(--muted)' }}>Nenhuma iniciando no período.</td></tr>
                 )}
               </tbody>
             </table>
+            </div>
           </div>
         </div>
 
@@ -877,12 +900,15 @@ export default function App() {
           {tab === 'planilha' && (can('planilha') || !online) && (
             <>
               <div className="toolbar">
-                <input placeholder="🔍 Buscar…" value={q} onChange={(e) => setQ(e.target.value)} />
-                <select value={stFilter} onChange={(e) => setStFilter(e.target.value)}>
+                <input placeholder="🔍 Buscar…" value={q} onChange={(e) => { setQ(e.target.value); setSelecionadas([]); }} />
+                <select value={stFilter} onChange={(e) => { setStFilter(e.target.value); setSelecionadas([]); }}>
                   <option value="">Todos os status</option>
                   {Object.keys(STATUS_ROTULO).map((s) => <option key={s} value={s}>{STATUS_ROTULO[s]}</option>)}
                 </select>
                 {podeEditar && <button onClick={() => abrirNovaCampanha()}>＋ Nova campanha</button>}
+                {podeEditar && selecionadas.length > 0 && (
+                  <button className="danger" onClick={excluirSelecionadas}>🗑 Excluir {selecionadas.length} selecionada(s)</button>
+                )}
                 {can('importar') && (
                   <>
                     <label className="toolbar-upload" title="Importar planilha no padrão Cidade;LED;Anunciante;Início;Fim;ReservaN_Início;ReservaN_Fim…">
@@ -900,6 +926,16 @@ export default function App() {
               <div style={{ overflowX: 'auto' }}>
                 <table>
                   <thead><tr>
+                    {podeEditar && (
+                      <th>
+                        <input type="checkbox" title="Selecionar visíveis"
+                          checked={linhas.length > 0 && linhas.every((r) => !r.id || selecionadas.includes(r.id))}
+                          onChange={(e) => {
+                            if (e.target.checked) setSelecionadas((xs) => [...new Set([...xs, ...linhas.map((r) => r.id).filter(Boolean) as string[]])]);
+                            else setSelecionadas((xs) => xs.filter((id) => !linhas.some((r) => r.id === id)));
+                          }} />
+                      </th>
+                    )}
                     {[['cidade', 'Cidade'], ['led', 'LED'], ['anunciante', 'Anunciante'], ['inicio', 'Início'], ['fim', 'Fim'], ['status', 'Status']].map(([k, lb]) => (
                       <th key={k} onClick={() => { if (k === sortK) setSortD((d) => (d === 1 ? -1 : 1)); else { setSortK(k); setSortD(1); } }}>
                         {lb}{sortK === k ? (sortD === 1 ? ' ▲' : ' ▼') : ''}
@@ -911,6 +947,10 @@ export default function App() {
                     {online ? (
                       linhas.length ? linhas.map((r, i) => (
                         <tr key={r.id || i} className={r.id && r.id === destaque ? 'destaque' : undefined}>
+                          {podeEditar && (
+                            <td><input type="checkbox" checked={!!r.id && selecionadas.includes(r.id)} disabled={!r.id}
+                              onChange={() => r.id && alternarSelecao(r.id)} /></td>
+                          )}
                           <td>{r.cidade}</td><td>{r.led}</td>
                           <td><input defaultValue={r.anunciante} onBlur={(e) => salvarInline(r, 'anunciante', e.target.value)} /></td>
                           <td>{br(r.inicio)}</td><td>{br(r.fim)}</td>
@@ -930,12 +970,12 @@ export default function App() {
                           )}
                         </tr>
                       )) : (
-                        <tr><td colSpan={podeEditar ? 7 : 6} style={{ color: 'var(--muted)', textAlign: 'center' }}>
+                        <tr><td colSpan={podeEditar ? 8 : 6} style={{ color: 'var(--muted)', textAlign: 'center' }}>
                           Nenhuma campanha para os filtros atuais.
                         </td></tr>
                       )
                     ) : (
-                      <tr><td colSpan={podeEditar ? 7 : 6} style={{ color: 'var(--muted)', textAlign: 'center' }}>
+                      <tr><td colSpan={podeEditar ? 8 : 6} style={{ color: 'var(--muted)', textAlign: 'center' }}>
                         Sem dados - API offline. Ligue o back-end para carregar.
                       </td></tr>
                     )}

@@ -255,6 +255,20 @@ const server = app.listen(0, async () => {
       body: JSON.stringify({ cidade_id: 'salvador', led_codigo: 'TST S1' }) })).status), 403, 'mover p/ fora do escopo bloqueado');
     assert.equal((await fetch(base + '/api/leds/TST%20S1', { method: 'DELETE', headers: { Authorization: 'Bearer ' + regTok } })).status, 403, 'exclusão fora do escopo bloqueada');
     assert.equal((await fetch(base + '/api/leds/TST%20S1', { method: 'DELETE', headers: { Authorization: 'Bearer ' + login.token } })).status, 200, 'admin exclui');
+    // exclusão em lote: 2 válidas + 1 inexistente + 1 fora do escopo
+    for (const [cid, anu] of [['cap-l1', 'Lote 1'], ['cap-l2', 'Lote 2']])
+      assert.equal((await postCamp({ id: cid, cidade_id: 'aracaju', led_codigo: 'AJU 03', anunciante: anu, inicio: '2026-11-01', fim: '2026-12-01' })).status, 201, 'lote criada ' + cid);
+    const lote = await (await fetch(base + '/api/campanhas', { method: 'DELETE',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + login.token },
+      body: JSON.stringify({ ids: ['cap-l1', 'cap-l2', 'nao-existe'] }) })).json();
+    assert.deepEqual(lote.excluidas.sort(), ['cap-l1', 'cap-l2'], 'lote exclui as válidas');
+    assert.equal(lote.ignoradas.length, 1, 'lote reporta a inexistente');
+    assert.equal((await fetch(base + '/api/campanhas', { method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids: ['c1'] }) })).status, 401, 'lote sem login → 401');
+    assert.equal((await fetch(base + '/api/campanhas', { method: 'DELETE',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + login.token },
+      body: JSON.stringify({ ids: [] }) })).status, 400, 'lote vazio → 400');
     // tema: paleta padrão, edição admin, bloqueio e validação
     const tema0 = await get('/api/tema');
     assert.equal(tema0.vars.teal, '#2dd4bf', 'tema padrão do mockup');

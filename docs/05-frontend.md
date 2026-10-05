@@ -58,11 +58,13 @@ latência medida do fetch e período dinâmico.
   (rosca vem com as cores da API); formulário com color picker por variável +
   Salvar/Restaurar padrão.
 - **Planilha com CRUD + importação + reservas**: botão **＋ Nova campanha**,
-  coluna **Ações** (Editar, **Reservas**, Excluir); modal Reservas lista os
-  períodos com o anunciante de cada um e adiciona/exclui (anunciante vazio =
-  o da campanha); modal de campanha ajusta a **cidade sozinho ao trocar de
-  LED** (nunca grava cidade≠cidade do LED); status `a_vencer` mostra `Nd` ou
-  `encerra hoje`; **⬆ Importar**
+  **checkbox por linha** (cabeçalho seleciona visíveis) + **🗑 Excluir
+  selecionadas** (com confirmação e relatório; seleção limpa ao trocar
+  filtro/cidade), coluna **Ações** (Editar, **Reservas**, Excluir); modal
+  Reservas lista os períodos com o anunciante de cada um e adiciona/exclui
+  (anunciante vazio = o da campanha); modal de campanha ajusta a **cidade
+  sozinho ao trocar de LED** (nunca grava cidade≠cidade do LED); status
+  `a_vencer` mostra `Nd` ou `encerra hoje`; **⬆ Importar**
   + **Modelo** com relatório criadas/ignoradas inline. LED lotado volta `409`.
 - **Toasts de sessão**: aparecem em todo login/refresh, arrastáveis pelo título
   (⠿, com captura de ponteiro — vira flutuante ao arrastar), com Ver campanha
