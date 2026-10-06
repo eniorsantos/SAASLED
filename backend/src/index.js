@@ -1009,6 +1009,44 @@ app.delete('/api/usuarios/:login', auth(), requer('usuarios'), (req, res) => {
   res.json({ ok: true });
 });
 
+// — Backup: exporta o banco inteiro (JSON) e restaura —
+const TABELAS_BACKUP = ['config', 'cidades', 'leds', 'anunciantes', 'campanhas', 'programacoes', 'reservas', 'usuarios', 'usuario_cidade', 'permissoes', 'notificacoes', 'auditoria', 'tema'];
+app.get('/api/backup', auth(), requer('config'), (req, res) => {
+  const tabelas = {};
+  for (const t of TABELAS_BACKUP) {
+    try { tabelas[t] = db.prepare(`SELECT * FROM ${t}`).all(); }
+    catch { tabelas[t] = []; }
+  }
+  const nome = `backup-led-${R.hojeISO()}.json`;
+  res.header('Content-Type', 'application/json').attachment(nome)
+    .send(JSON.stringify({ app: 'saas-leds', versao: 1, gerado_em: new Date().toISOString(), por: req.user.login, tabelas }));
+});
+app.post('/api/backup/restaurar', auth(), requer('config'), (req, res) => {
+  const { tabelas } = req.body || {};
+  if (!tabelas || typeof tabelas !== 'object' || !Array.isArray(tabelas.campanhas))
+    return res.status(400).json({ erro: 'backup inválido (esperado {tabelas: {...}} com campanhas)' });
+  const tx = db.transaction(() => {
+    for (const t of [...TABELAS_BACKUP].reverse()) db.prepare(`DELETE FROM ${t}`).run();
+    const cols = (t) => db.prepare(`PRAGMA table_info(${t})`).all().map((c) => c.name);
+    for (const t of TABELAS_BACKUP) {
+      const rows = Array.isArray(tabelas[t]) ? tabelas[t] : [];
+      if (!rows.length) continue;
+      const validas = cols(t);
+      for (const r of rows) {
+        const ks = Object.keys(r).filter((k) => validas.includes(k));
+        if (!ks.length) continue;
+        db.prepare(`INSERT OR REPLACE INTO ${t} (${ks.join(',')}) VALUES (${ks.map(() => '?').join(',')})`)
+          .run(...ks.map((k) => r[k]));
+      }
+    }
+  });
+  try { tx(); } catch (e) { return res.status(400).json({ erro: 'falha ao restaurar: ' + e.message }); }
+  const contagem = {};
+  for (const t of TABELAS_BACKUP) contagem[t] = db.prepare(`SELECT COUNT(*) v FROM ${t}`).get().v;
+  log(req.user.login, 'backup.restore', JSON.stringify(contagem));
+  res.json({ ok: true, contagem });
+});
+
 // — Auditoria §9.2 —
 app.get('/api/auditoria', auth(), soAdmin, (req, res) =>
   res.json(db.prepare('SELECT * FROM auditoria ORDER BY id DESC LIMIT 100').all()));

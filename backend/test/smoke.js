@@ -281,6 +281,17 @@ const server = app.listen(0, async () => {
     assert.equal((await putTema({ vars: { teal: '#00ff00' } }, opLogin.token)).status, 403, 'não-admin não edita tema');
     assert.equal((await putTema({ vars: { teal: 'azul' } }, login.token)).status, 400, 'cor inválida rejeitada');
     assert.equal((await putTema({ vars: { xyz: '#fff' } }, login.token)).status, 400, 'variável desconhecida rejeitada');
+    // backup: exporta tudo e restaura
+    const bk = await (await fetch(base + '/api/backup', { headers: { Authorization: 'Bearer ' + login.token } })).json();
+    assert.ok(Array.isArray(bk.tabelas.campanhas) && bk.tabelas.campanhas.length >= 8, 'backup contém campanhas');
+    assert.ok(!('DATA.DB' in bk), 'sem chaves estranhas');
+    const rest = await (await fetch(base + '/api/backup/restaurar', { method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + login.token },
+      body: JSON.stringify({ tabelas: bk.tabelas }) })).json();
+    assert.ok(rest.ok && rest.contagem.campanhas >= 8, 'restore roundtrip');
+    assert.equal((await (await fetch(base + '/api/backup/restaurar', { method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + login.token },
+      body: JSON.stringify({ foo: 1 }) })).status), 400, 'restore inválido rejeitado');
     // logo: padrão ausente, upload válido/inválido, remoção
     const PIXEL = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
     assert.equal((await get('/api/logo')).logo, null, 'sem logo inicial');

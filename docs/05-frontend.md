@@ -50,11 +50,12 @@ Abas **Dashboard (todas as linhas) / Visualizar como planilha / Relatórios (dim
   **＋ Novo LED** (código, endereço, cidade), **Editar** (renomear move tudo
   junto) e **Excluir** (só LED vazio).
 - **Tela Configurações** (botão topbar + Voltar; `usuarios`, `cidades`, `config` ou `importar`): troca o painel, com seções
-  **Acesso**, **Cidades**, **Cores**, **Importar** e **Logo** (conforme permissão; sem seção permitida, volta ao painel).
+  **Acesso**, **Cidades**, **Cores**, **Importar**, **Logo** e **Backup** (conforme permissão; sem seção permitida, volta ao painel).
 - **Tema**: paleta lida de `/api/tema` e aplicada nas variáveis CSS (painel,
   fontes, Gantt, dots via `corStatus()`); gráficos Recharts usam os valores
   (rosca vem com as cores da API); formulário com color picker por variável +
 - **Logo**: upload na Configuração (preview 38px, máx. 512KB, só imagem); exibida fixa no lugar do ícone, persistida no back.
+- **Backup**: na Configuração, baixa o banco em JSON e restaura de arquivo (com confirmação; substituir tudo).
   Salvar/Restaurar padrão.
 - **Planilha com CRUD + reservas**: botão **+ Nova campanha**, **checkbox por linha** (cabeçalho seleciona visíveis) + **Excluir selecionadas**
   (com confirmação e relatório; seleção limpa ao trocar filtro/cidade), coluna **Ações** (Editar, **Reservas**, Excluir); modal

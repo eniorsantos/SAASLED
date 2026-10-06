@@ -4,7 +4,7 @@ import './index.css'
 import { api, API, salvarTema, FALLBACK_DASH, corStatus, STATUS_ROTULO, br, type Dashboard, type Me, type Notif, type PlanilhaRow } from './api'
 
 type Tab = 'dashboard' | 'planilha' | 'relatorios' | 'graficos' | 'reservas'
-type SecaoConfig = 'acesso' | 'cidades' | 'tema' | 'importar' | 'logo'
+type SecaoConfig = 'acesso' | 'cidades' | 'tema' | 'importar' | 'logo' | 'backup'
 
 // Toast arrastável: aparece em todo login/refresh; fechar só dispensa nesta
 // sessão (não marca como lida — isso é feito na central). Arraste pelo título.
@@ -501,6 +501,44 @@ export default function App() {
 
   // Menu global de reservas: lista tudo + criar/editar/excluir
   const [resModal, setResModal] = useState(false);
+  // Backup: baixa o banco (JSON) e restaura
+  const [bkMsg, setBkMsg] = useState<{ tipo: 'ok' | 'erro'; texto: string } | null>(null);
+  const baixarBackup = async () => {
+    setBkMsg(null);
+    try {
+      const token = localStorage.getItem('led_token');
+      const resp = await fetch(`${API}/api/backup`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const blob = await resp.blob();
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `backup-led.json`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+      setBkMsg({ tipo: 'ok', texto: 'Backup baixado.' });
+    } catch (e: any) { setBkMsg({ tipo: 'erro', texto: e.message }); }
+  };
+  const restaurarBackup = async (file: File | undefined) => {
+    if (!file) return;
+    setBkMsg(null);
+    try {
+      const txt = await file.text();
+      let body: any;
+      try { body = JSON.parse(txt); } catch { throw new Error('arquivo inválido (JSON)'); }
+      if (!body.tabelas) throw new Error('arquivo inválido (sem tabelas)');
+      if (!confirm('Restaurar SUBSTITUI todo o banco. Continuar?')) return;
+      const token = localStorage.getItem('led_token');
+      const resp = await fetch(`${API}/api/backup/restaurar`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify(body),
+      });
+      const r = await resp.json().catch(() => ({}));
+      if (!resp.ok) throw new Error(r.erro || `HTTP ${resp.status}`);
+      setBkMsg({ tipo: 'ok', texto: `Restaurado: ${r.contagem.campanhas} campanhas, ${r.contagem.reservas} reservas.` });
+      carregar();
+    } catch (e: any) { setBkMsg({ tipo: 'erro', texto: e.message }); }
+  };
   const conteudoReservas = () => (
     <>
       <div style={{ overflowX: 'auto' }}>
@@ -1183,6 +1221,8 @@ export default function App() {
                 {can('cidades') && <div className={`tab ${configSecao === 'cidades' ? 'active' : ''}`} onClick={() => setConfigSecao('cidades')}>Cidades</div>}
                 {can('config') && <div className={`tab ${configSecao === 'tema' ? 'active' : ''}`} onClick={() => setConfigSecao('tema')}>Cores</div>}
                 {can('config') && <div className={`tab ${configSecao === 'logo' ? 'active' : ''}`} onClick={() => setConfigSecao('logo')}>Logo</div>}
+                {can('config') && <div className={`tab ${configSecao === 'backup' ? 'active' : ''}`} onClick={() => setConfigSecao('backup')}>Backup</div>}
+                {can('config') && <div className={`tab ${configSecao === 'backup' ? 'active' : ''}`} onClick={() => setConfigSecao('backup')}>Backup</div>}
                 {can('importar') && <div className={`tab ${configSecao === 'importar' ? 'active' : ''}`} onClick={() => setConfigSecao('importar')}>Importar</div>}
               </div>
               {configSecao === 'acesso' && can('usuarios') && (
@@ -1229,6 +1269,19 @@ export default function App() {
                     <a href={api.modeloImportUrl}><button className="ghost" type="button">⬇ Modelo</button></a>
                   </div>
                   {importMsg && <p className={`spot-msg ${importMsg.tipo}`}>{importMsg.texto}</p>}
+                </>
+              )}
+              {configSecao === 'backup' && can('config') && (
+                <>
+                  <p className="sub">Baixa o banco inteiro em JSON; restaurar <b>substitui tudo</b> — faça um backup antes.</p>
+                  <div className="toolbar" style={{ marginBottom: 0 }}>
+                    <button onClick={baixarBackup}>⬇ Baixar backup</button>
+                    <label className="toolbar-upload" title="Restaurar a partir de um backup JSON">
+                      ⬆ Restaurar backup
+                      <input type="file" accept=".json,application/json" hidden onChange={(e) => { restaurarBackup(e.target.files?.[0]); e.target.value = ''; }} />
+                    </label>
+                  </div>
+                  {bkMsg && <p className={`spot-msg ${bkMsg.tipo === 'ok' ? 'ok' : 'erro'}`}>{bkMsg.texto}</p>}
                 </>
               )}
               {configSecao === 'tema' && can('config') && (

@@ -33,8 +33,8 @@ nas cores/elementos de `mockup-led-saas`.
   anunciante e toast de início próximo.
 - Menu **👥 Usuários**: por usuário, define cidades visíveis + recursos extras.
 - Menu **🏙️ Cidades**: incluir, editar (id fixo) e excluir (só vazia).
-- **Tela Configurações** (botão ⚙️ + ← Voltar): Acesso + Cidades + **Cores** + Importar + **Logo** (paleta do projeto:
-  fundo, fontes, destaques e gráficos, com restaurar padrão).
+- **Tela Configurações** (botão + Voltar): Acesso + Cidades + **Cores** + Importar + **Logo** + **Backup** (paleta:
+  fundo, fontes, destaques e gráficos, com restaurar padrão; backup JSON com restauração).
 - Aba planilha com **＋ Nova campanha**, **Editar/Reservas/Excluir** por linha
   e **Excluir selecionadas**; **⬆ Importar** + **Modelo** na Configuração.
 - Aba **Relatórios**: por LED/cidade/cliente, com status e período, preview

@@ -326,3 +326,7 @@ pm run dev falhava com Failed to load PostCSS config ... Unexpected token: ediç
 ## Fonte do LED no PDF -30%
 
 - Cabeçalho do grupo de 13pt para 9pt.
+
+## Backup do banco na Configuração
+
+- GET /api/backup (download JSON) + POST /api/backup/restaurar (valida e substitui em transação, com auditoria); seção Backup (recurso config); smoke com roundtrip.

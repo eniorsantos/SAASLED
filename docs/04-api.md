@@ -20,6 +20,8 @@ Legenda de auth: 🔓 pública · 🔑 login · ✏️ admin/regional/operador �
 | GET | `/api/logo` | 🔓 | `{logo: dataURL|null}` |
 | PUT | `/api/logo` | `config` | `{dataUrl}` imagem base64 (png/jpg/gif/webp/svg, máx. 512KB); 413 se maior |
 | DELETE | `/api/logo` | `config` | remove a logo |
+| GET | `/api/backup` | `config` | banco inteiro em JSON (download) |
+| POST | `/api/backup/restaurar` | `config` | `{tabelas}` valida e **substitui tudo** (transação) → `{ok, contagem}` |
 | GET | `/api/tema` | 🔓 | `{vars{11 cores}, rotulos}` — paleta do mockup por padrão |
 | PUT | `/api/tema` | `config` | `{vars?}` (hex `#rgb`/`#rrggbb`, só chaves conhecidas) ou `{restaurar:true}` |
 
