@@ -625,7 +625,8 @@ app.post('/api/relatorios/pdf', auth(), requer('relatorios'), (req, res) => {
   for (const [grupo, itens] of [...grupos.entries()].sort()) {
     if (doc.y > 720) doc.addPage();
     // x explícito: o cursor fica na direita após as colunas absolutas das linhas
-    doc.fontSize(13).text(norm(`${grupo} (${itens.length})`), 40, doc.y, { underline: true });
+    // cabeçalho do LED 30% menor (13 → 9)
+    doc.fontSize(9).text(norm(`${grupo} (${itens.length})`), 40, doc.y, { underline: true });
     doc.moveDown(0.3).fontSize(9);
     for (const r of itens) {
       // tabulação uniforme em 3 colunas: anunciante na margem esquerda (1 linha) | período | status
