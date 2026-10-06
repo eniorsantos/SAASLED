@@ -610,25 +610,33 @@ app.post('/api/relatorios/pdf', auth(), requer('relatorios'), (req, res) => {
     if (!grupos.has(k)) grupos.set(k, []);
     grupos.get(k).push(r);
   }
-  const doc = new PDFDocument({ margin: 40, size: 'A4' });
+  const doc = new PDFDocument({ margin: 40, size: 'A4', compress: false });
   const chunks = [];
   doc.on('data', (c) => chunks.push(c));
   doc.on('end', () => res.header('Content-Type', 'application/pdf').attachment(`relatorio-${dimensao}.pdf`).send(Buffer.concat(chunks)));
   const norm = (s) => String(s || '').normalize('NFC');
+  const dtbr = (iso) => { const [y, m, d] = String(iso).split('-'); return `${d}/${m}/${y}`; };
+  // corte manual em 1 linha (o ellipsis do pdfkit não segura nomes longos e quebra no meio da palavra)
+  const corta = (s, n) => { s = norm(s); return s.length > n ? s.slice(0, n - 3) + '...' : s };
   doc.fontSize(18).text(norm(`LED Control — Relatório ${DIMENSOES_REL[dimensao].titulo}`));
-  doc.fontSize(10).fillColor('#555').text(norm(
-    `Gerado em ${R.hojeISO()} por ${req.user.login} · filtros: ` +
-    `cidades=${filtro.join(',') || 'todas'} status=${(status || []).join(',') || 'todos'} ` +
-    `cliente=${anunciante || 'todos'} período=${de || '…'}→${ate || '…'} · ${rows.length} campanha(s)`));
+  doc.fontSize(10).fillColor('#555').text(norm(`${rows.length} campanha(s) · gerado em ${dtbr(R.hojeISO())}`));
   doc.moveDown().fillColor('#000');
   if (!rows.length) doc.fontSize(12).text('Nenhuma campanha para os filtros.');
   for (const [grupo, itens] of [...grupos.entries()].sort()) {
-    doc.fontSize(13).text(norm(`${grupo} (${itens.length})`), { underline: true });
-    doc.fontSize(9);
+    if (doc.y > 720) doc.addPage();
+    // x explícito: o cursor fica na direita após as colunas absolutas das linhas
+    doc.fontSize(13).text(norm(`${grupo} (${itens.length})`), 40, doc.y, { underline: true });
+    doc.moveDown(0.3).fontSize(9);
     for (const r of itens) {
-      const linha = `  • ${r.anunciante} — ${r.led} (${r.cidade}) ${r.inicio} → ${r.fim} [${r.status}]`;
-      if (doc.y > 750) doc.addPage();
-      doc.text(norm(linha));
+      // tabulação uniforme em 4 colunas: LED na margem esquerda (1 linha) | anunciante | período | status
+      // (página ANTES de capturar o y — senão a linha cai fora da página nova)
+      if (doc.y > 740) doc.addPage();
+      const y = doc.y;
+      doc.text(corta(r.led, 19), 60, y);
+      doc.text(corta(r.anunciante, 30), 170, y);
+      doc.text(norm(`${dtbr(r.inicio)} - ${dtbr(r.fim)}`), 335, y);
+      doc.text(norm(`[${r.status}]`), 475, y);
+      doc.y = y + 14;
     }
     doc.moveDown(0.5);
   }

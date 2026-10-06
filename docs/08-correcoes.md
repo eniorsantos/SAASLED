@@ -293,3 +293,19 @@ ormalizarAnunciante() em todas as escritas e nas chaves de grupo (Dup X = Dup X 
 ## Varredura pos-relatorios
 
 - Download do PDF usava URL relativa (quebrava com VITE_API_URL); POST /api/usuarios e PUT /api/tema aceitavam tipos errados nos arrays/objetos (coagidos para array/objeto).
+
+## PDF sem filtros, sem LED repetido, datas BR
+
+- Removida a linha de filtros, LED fora das linhas, período em DD/MM/AAAA; PDFs sem compressão (texto inspecionável) e smoke decodificando o conteúdo.
+
+## Layout das linhas do PDF
+
+- Sem cidade/LED na linha, período com hífen (DD/MM/AAAA - DD/MM/AAAA) e colunas em posições fixas com altura uniforme.
+
+## LED de volta como primeira coluna
+
+- Linhas em 4 colunas fixas: LED (margem esquerda, 1 linha com ellipsis) | anunciante | período | status.
+
+## Cabeçalhos do PDF na margem direita
+
+- **Causa**: textos absolutos das linhas deixavam o cursor X na direita; os cabeçalhos de grupo seguintes fluíam dali. Agora cabeçalho com X explícito (40) + corte manual de 1 linha (ellipsis quebrava no meio da palavra).

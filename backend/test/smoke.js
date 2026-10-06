@@ -288,6 +288,14 @@ const server = app.listen(0, async () => {
     assert.equal(pdf.status, 200, 'PDF gerado');
     assert.ok((pdf.headers.get('content-type') || '').includes('pdf'), 'content-type pdf');
     assert.equal(Buffer.from(await pdf.arrayBuffer()).slice(0, 4).toString(), '%PDF', 'binário PDF válido');
+    const pdfBuf = Buffer.from(await (await fetch(base + '/api/relatorios/pdf', { method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + login.token },
+      body: JSON.stringify({ dimensao: 'cliente', status: ['veiculando'] }) })).arrayBuffer());
+    const pdfTxt = pdfBuf.toString('latin1').replace(/<([0-9a-fA-F]+)>/g, (_, h) => Buffer.from(h, 'hex').toString('latin1'));
+    assert.ok(!pdfTxt.includes('filtros'), 'sem lista de filtros no PDF');
+    assert.ok(pdfTxt.includes('10/02/2026'), 'datas em pt-BR no PDF');
+    assert.ok(!pdfTxt.includes('2026-02-10'), 'sem datas ISO no PDF');
+    assert.ok(pdfTxt.includes('AJU 01'), 'LED na margem esquerda');
     assert.equal((await (await fetch(base + '/api/relatorios/pdf', { method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + login.token },
       body: JSON.stringify({ dimensao: 'x' }) })).status), 400, 'dimensão inválida rejeitada');
