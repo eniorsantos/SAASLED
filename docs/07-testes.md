@@ -1,4 +1,4 @@
-# 07 — Testes e verificação
+﻿# 07 — Testes e verificação
 
 ## Smoke do back-end (`backend/test/smoke.js`)
 

@@ -618,7 +618,7 @@ app.post('/api/relatorios/pdf', auth(), requer('relatorios'), (req, res) => {
   const dtbr = (iso) => { const [y, m, d] = String(iso).split('-'); return `${d}/${m}/${y}`; };
   // corte manual em 1 linha (o ellipsis do pdfkit não segura nomes longos e quebra no meio da palavra)
   const corta = (s, n) => { s = norm(s); return s.length > n ? s.slice(0, n - 3) + '...' : s };
-  doc.fontSize(18).text(norm(`LED Control — Relatório ${DIMENSOES_REL[dimensao].titulo}`));
+  doc.fontSize(18).text(norm(`CONTROLE DE LED — Relatório ${DIMENSOES_REL[dimensao].titulo}`));
   doc.fontSize(10).fillColor('#555').text(norm(`${rows.length} campanha(s) · gerado em ${dtbr(R.hojeISO())}`));
   doc.moveDown().fillColor('#000');
   if (!rows.length) doc.fontSize(12).text('Nenhuma campanha para os filtros.');
@@ -628,13 +628,12 @@ app.post('/api/relatorios/pdf', auth(), requer('relatorios'), (req, res) => {
     doc.fontSize(13).text(norm(`${grupo} (${itens.length})`), 40, doc.y, { underline: true });
     doc.moveDown(0.3).fontSize(9);
     for (const r of itens) {
-      // tabulação uniforme em 4 colunas: LED na margem esquerda (1 linha) | anunciante | período | status
-      // (página ANTES de capturar o y — senão a linha cai fora da página nova)
+      // tabulação uniforme em 3 colunas: anunciante na margem esquerda (1 linha) | período | status
+      // (o LED já está no cabeçalho do grupo; página ANTES de capturar o y)
       if (doc.y > 740) doc.addPage();
       const y = doc.y;
-      doc.text(corta(r.led, 19), 60, y);
-      doc.text(corta(r.anunciante, 30), 170, y);
-      doc.text(norm(`${dtbr(r.inicio)} - ${dtbr(r.fim)}`), 335, y);
+      doc.text(corta(r.anunciante, 42), 60, y);
+      doc.text(norm(`${dtbr(r.inicio)} - ${dtbr(r.fim)}`), 330, y);
       doc.text(norm(`[${r.status}]`), 475, y);
       doc.y = y + 14;
     }
@@ -917,6 +916,28 @@ app.put('/api/tema', auth(), requer('config'), (req, res) => {
   log(req.user.login, 'tema.update', Object.keys(vars).join(','));
   res.json({ vars: temaVars() });
 });
+
+// — Logo da empresa: dataURL persistida no banco, exibição em tamanho fixo —
+const LOGO_MAX = 512 * 1024; // 512KB
+app.get('/api/logo', (req, res) => {
+  const row = db.prepare('SELECT logo_dataurl FROM config WHERE id = 1').get();
+  res.json({ logo: (row && row.logo_dataurl) || null });
+});
+app.put('/api/logo', auth(), requer('config'), (req, res) => {
+  const { dataUrl } = req.body || {};
+  if (typeof dataUrl !== 'string' || !/^data:image\/(png|jpe?g|gif|webp|svg\+xml);base64,[A-Za-z0-9+/=]+$/.test(dataUrl))
+    return res.status(400).json({ erro: 'envie {dataUrl} de imagem (png/jpg/gif/webp/svg em base64)' });
+  if (dataUrl.length > LOGO_MAX)
+    return res.status(413).json({ erro: `logo grande demais (máx. ${LOGO_MAX / 1024}KB)` });
+  db.prepare('UPDATE config SET logo_dataurl = ? WHERE id = 1').run(dataUrl);
+  log(req.user.login, 'logo.update', `${dataUrl.length} chars`);
+  res.json({ ok: true });
+});
+app.delete('/api/logo', auth(), requer('config'), (req, res) => {
+  db.prepare('UPDATE config SET logo_dataurl = ? WHERE id = 1').run('');
+  log(req.user.login, 'logo.delete', '');
+  res.json({ ok: true });
+});
 function detalheUsuario(login) {
   const u = db.prepare('SELECT login,perfil,nome FROM usuarios WHERE login = ?').get(login);
   if (!u) return null;
@@ -1002,5 +1023,5 @@ try {
 } catch {}
 
 if (require.main === module)
-  app.listen(PORT, () => console.log(`LED Control API on http://localhost:${PORT} (hoje=${R.hojeISO()})`));
+  app.listen(PORT, () => console.log(`CONTROLE DE LED API on http://localhost:${PORT} (hoje=${R.hojeISO()})`));
 module.exports = app;

@@ -4,7 +4,7 @@ import './index.css'
 import { api, API, salvarTema, FALLBACK_DASH, corStatus, STATUS_ROTULO, br, type Dashboard, type Me, type Notif, type PlanilhaRow } from './api'
 
 type Tab = 'dashboard' | 'planilha' | 'relatorios' | 'graficos' | 'reservas'
-type SecaoConfig = 'acesso' | 'cidades' | 'tema' | 'importar'
+type SecaoConfig = 'acesso' | 'cidades' | 'tema' | 'importar' | 'logo'
 
 // Toast arrastável: aparece em todo login/refresh; fechar só dispensa nesta
 // sessão (não marca como lida — isso é feito na central). Arraste pelo título.
@@ -142,6 +142,28 @@ export default function App() {
   const [ledMsg, setLedMsg] = useState<{ tipo: 'ok' | 'erro'; texto: string } | null>(null);
   // Tema (paleta configurável): lido da API e aplicado nas variáveis CSS
   const [tema, setTema] = useState<{ vars: Record<string, string>; rotulos: Record<string, string> }>({ vars: {}, rotulos: {} });
+  // Logo da empresa (persistida no back; exibição fixa 38px no lugar do ícone)
+  const [logo, setLogo] = useState<string | null>(null);
+  const [logoPrev, setLogoPrev] = useState<string | null>(null);
+  const [logoMsg, setLogoMsg] = useState<{ tipo: 'ok' | 'erro'; texto: string } | null>(null);
+  const lerLogo = (file: File | undefined) => {
+    if (!file) return;
+    if (!file.type.startsWith('image/')) { setLogoMsg({ tipo: 'erro', texto: 'Envie um arquivo de imagem.' }); return; }
+    if (file.size > 512 * 1024) { setLogoMsg({ tipo: 'erro', texto: 'Máximo 512KB.' }); return; }
+    const rd = new FileReader();
+    rd.onload = () => { setLogoPrev(String(rd.result)); setLogoMsg(null); };
+    rd.readAsDataURL(file);
+  };
+  const salvarLogo = async () => {
+    if (!logoPrev) return;
+    setLogoMsg(null);
+    try { await api.salvarLogo(logoPrev); setLogo(logoPrev); setLogoPrev(null); setLogoMsg({ tipo: 'ok', texto: 'Logo salva.' }); }
+    catch (e: any) { setLogoMsg({ tipo: 'erro', texto: e.message }); }
+  };
+  const removerLogo = async () => {
+    try { await api.removerLogo(); setLogo(null); setLogoPrev(null); setLogoMsg({ tipo: 'ok', texto: 'Logo removida.' }); }
+    catch (e: any) { setLogoMsg({ tipo: 'erro', texto: e.message }); }
+  };
   const [temaMsg, setTemaMsg] = useState<{ tipo: 'ok' | 'erro'; texto: string } | null>(null);
   const [configSecao, setConfigSecao] = useState<SecaoConfig>('acesso');
   // Tela cheia de configurações (troca o painel; LEDs/Usuários/Cidades moram aqui)
@@ -162,11 +184,11 @@ export default function App() {
         api.leds(cidade).catch(() => [] as any[]),
       ]);
       const m = await api.me().catch(() => null);
+      const t = await api.tema().catch(() => null);
+      const lg = await api.logo().catch(() => null);
       setDash(d); setOnline(true);
-      try {
-        const t = await api.tema().catch(() => null);
-        if (t) setTema(t);
-      } catch { /* mantém paleta padrão */ }
+      if (t) setTema(t);
+      if (lg) setLogo(lg.logo);
       setRows(p); setNotifs(n.map((x) => ({ ...x, titulo: x.titulo, corpo: x.corpo })));
       if (m) setMe(m);
       if (cids.length) setCidades(cids);
@@ -465,7 +487,7 @@ export default function App() {
       if (can('usuarios')) setConfigSecao('acesso');
       else if (can('config')) setConfigSecao('tema');
       else if (can('importar')) setConfigSecao('importar');
-    } else if (configSecao === 'tema' && !can('config')) {
+    } else if ((configSecao === 'tema' || configSecao === 'logo') && !can('config')) {
       if (can('usuarios')) setConfigSecao('acesso');
       else if (can('cidades')) setConfigSecao('cidades');
       else if (can('importar')) setConfigSecao('importar');
@@ -735,7 +757,7 @@ export default function App() {
     return (
       <div className="login-wrap">
         <div className="card login-card">
-          <div className="brand" style={{ marginBottom: 12 }}><div className="icon">📺</div><div><h1>LED CONTROL</h1><span>PAINÉIS DE VEICULAÇÃO</span></div></div>
+          <div className="brand" style={{ marginBottom: 12 }}>{logo ? <img className="brand-logo" src={logo} alt="logo" /> : <div className="icon">📺</div>}<div><h1>CONTROLE DE LED</h1><span>PAINÉIS DE VEICULAÇÃO</span></div></div>
           <h2>Login</h2>
           <p className="sub">Fluxo §5 · perfis §9.2 (admin / regional / operador / visualizador)</p>
           <input value={login} onChange={(e) => setLogin(e.target.value)} placeholder="login" />
@@ -767,7 +789,7 @@ export default function App() {
 
       <div className="wrap">
         <div className="topbar">
-          <div className="brand"><div className="icon">📺</div><div><h1>LED CONTROL</h1><span>PAINÉIS DE VEICULAÇÃO</span></div></div>
+          <div className="brand">{logo ? <img className="brand-logo" src={logo} alt="logo" /> : <div className="icon">📺</div>}<div><h1>CONTROLE DE LED</h1><span>PAINÉIS DE VEICULAÇÃO</span></div></div>
           <span className="live">● LIVE{online ? '' : ' · OFFLINE'}</span>
           <div className="kpis">
             <div className="kpi"><label>OCUPAÇÃO MÉDIA</label><b>{dash.kpis.ocupacao_media}%</b></div>
@@ -1160,6 +1182,7 @@ export default function App() {
                 {can('usuarios') && <div className={`tab ${configSecao === 'acesso' ? 'active' : ''}`} onClick={() => setConfigSecao('acesso')}>Acesso</div>}
                 {can('cidades') && <div className={`tab ${configSecao === 'cidades' ? 'active' : ''}`} onClick={() => setConfigSecao('cidades')}>Cidades</div>}
                 {can('config') && <div className={`tab ${configSecao === 'tema' ? 'active' : ''}`} onClick={() => setConfigSecao('tema')}>Cores</div>}
+                {can('config') && <div className={`tab ${configSecao === 'logo' ? 'active' : ''}`} onClick={() => setConfigSecao('logo')}>Logo</div>}
                 {can('importar') && <div className={`tab ${configSecao === 'importar' ? 'active' : ''}`} onClick={() => setConfigSecao('importar')}>Importar</div>}
               </div>
               {configSecao === 'acesso' && can('usuarios') && (
@@ -1172,6 +1195,27 @@ export default function App() {
                 <>
                   <p className="sub">Conforme a tabela cidades: id, nome, UF e fuso. Exclusão só de cidade vazia (sem LEDs).</p>
                   {conteudoCidades()}
+                </>
+              )}
+              {configSecao === 'logo' && can('config') && (
+                <>
+                  <p className="sub">Logo da empresa no lugar do ícone, em tamanho fixo (38px), persistida no back-end.</p>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+                    {(logoPrev || logo)
+                      ? <img className="brand-logo" src={(logoPrev || logo) as string} alt="prévia" />
+                      : <div className="icon" style={{ width: 38, height: 38, borderRadius: 10, background: 'var(--panel2)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>—</div>}
+                    <div className="toolbar" style={{ margin: 0 }}>
+                      <label className="toolbar-upload" title="PNG, JPG, GIF, WebP ou SVG até 512KB">
+                        Escolher imagem
+                        <input type="file" accept="image/*" hidden onChange={(e) => { lerLogo(e.target.files?.[0]); e.target.value = ''; }} />
+                      </label>
+                    </div>
+                  </div>
+                  {logoMsg && <p className={`spot-msg ${logoMsg.tipo === 'ok' ? 'ok' : 'erro'}`}>{logoMsg.texto}</p>}
+                  <div className="toolbar" style={{ marginTop: 8, marginBottom: 0 }}>
+                    <button disabled={!logoPrev} onClick={salvarLogo}>Salvar logo</button>
+                    {(logo || logoPrev) && <button className="ghost" onClick={removerLogo}>Remover</button>}
+                  </div>
                 </>
               )}
               {configSecao === 'importar' && can('importar') && (

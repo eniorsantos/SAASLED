@@ -17,6 +17,9 @@ Legenda de auth: 🔓 pública · 🔑 login · ✏️ admin/regional/operador �
 | GET | `/api/health` | 🔓 | `{ok: true, hoje}` |
 | GET | `/api/config` | 🔓 | `{hoje, n_inicio_proximo, n_vencimento_proximo, max_clientes_por_led}` |
 | PUT | `/api/config` | `config` | `{n_inicio_proximo?, n_vencimento_proximo?, max_clientes_por_led?}` (inteiro ≥ 1) |
+| GET | `/api/logo` | 🔓 | `{logo: dataURL|null}` |
+| PUT | `/api/logo` | `config` | `{dataUrl}` imagem base64 (png/jpg/gif/webp/svg, máx. 512KB); 413 se maior |
+| DELETE | `/api/logo` | `config` | remove a logo |
 | GET | `/api/tema` | 🔓 | `{vars{11 cores}, rotulos}` — paleta do mockup por padrão |
 | PUT | `/api/tema` | `config` | `{vars?}` (hex `#rgb`/`#rrggbb`, só chaves conhecidas) ou `{restaurar:true}` |
 

@@ -100,6 +100,10 @@ export const api = {
   importarPlanilha: (csv: string) =>
     req<{ total: number; criadas: number; reservas_criadas: number; ignoradas: { linha: number; anunciante: string; motivo: string }[] }>('/api/import/planilha', { method: 'POST', body: JSON.stringify({ csv }) }),
   tema: () => req<{ vars: Record<string, string>; rotulos: Record<string, string> }>('/api/tema'),
+  logo: () => req<{ logo: string | null }>('/api/logo'),
+  salvarLogo: (dataUrl: string) =>
+    req('/api/logo', { method: 'PUT', body: JSON.stringify({ dataUrl }) }),
+  removerLogo: () => req('/api/logo', { method: 'DELETE' }),
 };
 
 // Fallback offline: estrutura neutra VAZIA (sem dados fictícios — nada de Aracaju mockado)

@@ -1,6 +1,6 @@
-# 09 — Implantação: local e nuvem (passo a passo)
+﻿# 09 — Implantação: local e nuvem (passo a passo)
 
-Guia operacional do LED Control. Parte A roda na sua máquina (Windows);
+Guia operacional do CONTROLE DE LED. Parte A roda na sua máquina (Windows);
 Parte B publica na internet em 3 caminhos (do mais simples ao mais controlado).
 
 > Convenções: comandos PowerShell no Windows (`PS>`) e Bash no Linux (`$`).
@@ -48,7 +48,7 @@ Se `better-sqlite3` falhar, ver A.0 (Build Tools).
 
 ```powershell
 PS> npm start
-# LED Control API on http://localhost:3001 (hoje=2026-10-25)
+# CONTROLE DE LED API on http://localhost:3001 (hoje=2026-10-25)
 ```
 
 No 1º boot o `src/db.js` cria `backend/data.db` e o seed (2 cidades, 4 LEDs,
@@ -164,7 +164,7 @@ já no `.gitignore`) e suba ao GitHub.
    Sem este disco, o seed recria do zero a cada deploy (disco efêmero).
    Não monte o disco sobre a pasta do código — o `DB_PATH` existe exatamente
    para separar código (projeto) de dados (disco).
-6. Deploy → aguarde `LED Control API on http://localhost:3001` no log e teste:
+6. Deploy → aguarde `CONTROLE DE LED API on http://localhost:3001` no log e teste:
    `https://<sua-api>.onrender.com/api/health`.
 
 > Nota free-tier: o serviço "dorme" sem tráfego (~50s p/ acordar). O front mostra
@@ -220,7 +220,7 @@ $ sudo npm i -g pm2
 $ cd /var/www/saas-leds/backend
 $ JWT_SECRET='<hex>' HOJE='' pm2 start src/index.js --name led-api
 $ pm2 save && pm2 startup   # execute o comando que ele imprimir (sudo env ...)
-$ pm2 logs led-api   # conferir "LED Control API on http://localhost:3001"
+$ pm2 logs led-api   # conferir "CONTROLE DE LED API on http://localhost:3001"
 $ curl localhost:3001/api/health
 ```
 

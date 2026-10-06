@@ -1,4 +1,4 @@
-# LED Control — SaaS Controle de Veiculação (painéis de LED)
+﻿# CONTROLE DE LED — SaaS Controle de Veiculação (painéis de LED)
 
 Implementação exata de `spec-saas-controle-leds` (back-end + regras) com painel
 nas cores/elementos de `mockup-led-saas`.
@@ -33,7 +33,7 @@ nas cores/elementos de `mockup-led-saas`.
   anunciante e toast de início próximo.
 - Menu **👥 Usuários**: por usuário, define cidades visíveis + recursos extras.
 - Menu **🏙️ Cidades**: incluir, editar (id fixo) e excluir (só vazia).
-- **Tela Configurações** (botão ⚙️ + ← Voltar): Acesso + Cidades + **Cores** (paleta do projeto:
+- **Tela Configurações** (botão ⚙️ + ← Voltar): Acesso + Cidades + **Cores** + Importar + **Logo** (paleta do projeto:
   fundo, fontes, destaques e gráficos, com restaurar padrão).
 - Aba planilha com **＋ Nova campanha**, **Editar/Reservas/Excluir** por linha
   e **Excluir selecionadas**; **⬆ Importar** + **Modelo** na Configuração.

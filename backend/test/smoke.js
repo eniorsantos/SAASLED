@@ -281,6 +281,19 @@ const server = app.listen(0, async () => {
     assert.equal((await putTema({ vars: { teal: '#00ff00' } }, opLogin.token)).status, 403, 'não-admin não edita tema');
     assert.equal((await putTema({ vars: { teal: 'azul' } }, login.token)).status, 400, 'cor inválida rejeitada');
     assert.equal((await putTema({ vars: { xyz: '#fff' } }, login.token)).status, 400, 'variável desconhecida rejeitada');
+    // logo: padrão ausente, upload válido/inválido, remoção
+    const PIXEL = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+    assert.equal((await get('/api/logo')).logo, null, 'sem logo inicial');
+    const putLogo = (body, tok) => fetch(base + '/api/logo', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + tok },
+      body: JSON.stringify(body),
+    }).then(async (r) => ({ status: r.status, json: await r.json().catch(() => ({})) }));
+    assert.equal((await putLogo({ dataUrl: PIXEL }, login.token)).status, 200, 'logo salva');
+    assert.equal((await get('/api/logo')).logo, PIXEL, 'logo persistida');
+    assert.equal((await putLogo({ dataUrl: 'data:text/plain;base64,xx' }, login.token)).status, 400, 'tipo inválido rejeitado');
+    assert.equal((await putLogo({ dataUrl: PIXEL }, opLogin.token)).status, 403, 'não-admin não troca logo');
+    assert.equal((await fetch(base + '/api/logo', { method: 'DELETE', headers: { Authorization: 'Bearer ' + login.token } })).status, 200, 'logo removida');
+    assert.equal((await get('/api/logo')).logo, null, 'logo zerada');
     // relatórios PDF por dimensão
     const pdf = await (await fetch(base + '/api/relatorios/pdf', { method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + login.token },
@@ -295,7 +308,12 @@ const server = app.listen(0, async () => {
     assert.ok(!pdfTxt.includes('filtros'), 'sem lista de filtros no PDF');
     assert.ok(pdfTxt.includes('10/02/2026'), 'datas em pt-BR no PDF');
     assert.ok(!pdfTxt.includes('2026-02-10'), 'sem datas ISO no PDF');
-    assert.ok(pdfTxt.includes('AJU 01'), 'LED na margem esquerda');
+    const pdfDec = pdfTxt.replace(/<([0-9a-fA-F]+)>/g, (_, h) => Buffer.from(h, 'hex').toString('latin1'));
+    const pdfLed = Buffer.from(await (await fetch(base + '/api/relatorios/pdf', { method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + login.token },
+      body: JSON.stringify({ dimensao: 'led' }) })).arrayBuffer()).toString('latin1')
+      .replace(/<([0-9a-fA-F]+)>/g, (_, h) => Buffer.from(h, 'hex').toString('latin1'));
+    assert.ok(pdfLed.includes('AJU 01'), 'LED no cabeçalho do grupo');
     assert.equal((await (await fetch(base + '/api/relatorios/pdf', { method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + login.token },
       body: JSON.stringify({ dimensao: 'x' }) })).status), 400, 'dimensão inválida rejeitada');

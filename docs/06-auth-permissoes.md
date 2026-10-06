@@ -1,4 +1,4 @@
-# 06 — Autenticação, perfis e controle por usuário (spec §9.2)
+﻿# 06 — Autenticação, perfis e controle por usuário (spec §9.2)
 
 ## Login
 
@@ -15,7 +15,7 @@ Seed: `admin/admin123` · `regional/reg123` (vinculado a `aracaju`) ·
 
 Recursos (13): `dashboard, planilha, graficos, leds, cidades, campanhas_editar,
 reservas, relatorios, importar, exportar, notificacoes, usuarios, config` (`GET /api/recursos`).
-O recurso `config` cobre limites, paleta (`/api/tema`) e define quem abre a seção Cores.
+O recurso `config` cobre limites, paleta (`/api/tema`), logo e define quem abre as seções Cores/Logo.
 
 | Perfil | Padrão |
 |--------|--------|

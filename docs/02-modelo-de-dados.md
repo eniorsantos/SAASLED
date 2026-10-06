@@ -14,7 +14,7 @@ ignorado pelo git — ver `.gitignore`).
 
 | Tabela           | Colunas                                                                                  |
 |------------------|------------------------------------------------------------------------------------------|
-| `config`         | `id=1`, `n_inicio_proximo` (7), `n_vencimento_proximo` (5), `max_clientes_por_led` (8) — limites editáveis pelo admin |
+| `config`         | `id=1`, `n_inicio_proximo` (7), `n_vencimento_proximo` (5), `max_clientes_por_led` (8), `logo_dataurl` (dataURL da logo) — limites editáveis pelo admin |
 | `cidades`        | `id` (ex. `aracaju`), `nome`, `uf`, `fuso` (padrão `America/Maceio`)                     |
 | `leds`           | `codigo` PK (ex. `AJU 01`), `endereco`, `cidade_id` → cada LED pertence a exatamente 1 cidade |
 | `anunciantes`    | `nome` PK                                                                                |

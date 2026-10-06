@@ -309,3 +309,11 @@ ormalizarAnunciante() em todas as escritas e nas chaves de grupo (Dup X = Dup X 
 ## Cabeçalhos do PDF na margem direita
 
 - **Causa**: textos absolutos das linhas deixavam o cursor X na direita; os cabeçalhos de grupo seguintes fluíam dali. Agora cabeçalho com X explícito (40) + corte manual de 1 linha (ellipsis quebrava no meio da palavra).
+
+## Linhas sem LED (só no cabeçalho)
+
+- 3 colunas: anunciante | período | status; LED só no cabeçalho do grupo.
+
+## Logo da empresa
+
+- config.logo_dataurl + GET|PUT|DELETE /api/logo (recurso config, valida tipo e 512KB); seção Logo na Configuração com preview 38px; brand usa a logo em tamanho fixo.
