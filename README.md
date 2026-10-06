@@ -35,8 +35,10 @@ nas cores/elementos de `mockup-led-saas`.
 - Menu **🏙️ Cidades**: incluir, editar (id fixo) e excluir (só vazia).
 - **Tela Configurações** (botão ⚙️ + ← Voltar): Acesso + Cidades + **Cores** (paleta do projeto:
   fundo, fontes, destaques e gráficos, com restaurar padrão).
-- Aba planilha com **＋ Nova campanha**, **Editar/Reservas/Excluir** por linha,
-  **⬆ Importar** (padrão da exportação + reservas) e **Modelo**.
+- Aba planilha com **＋ Nova campanha**, **Editar/Reservas/Excluir** por linha
+  e **Excluir selecionadas**; **⬆ Importar** + **Modelo** na Configuração.
+- Aba **Relatórios**: por LED/cidade/cliente, com status e período, preview
+  agrupado e download em PDF.
 
 ## Rodar
 

@@ -13,15 +13,15 @@ Seed: `admin/admin123` · `regional/reg123` (vinculado a `aracaju`) ·
 
 ## Perfis (padrões) + recursos por usuário
 
-Recursos (12): `dashboard, planilha, graficos, leds, cidades, campanhas_editar,
-reservas, importar, exportar, notificacoes, usuarios, config` (`GET /api/recursos`).
+Recursos (13): `dashboard, planilha, graficos, leds, cidades, campanhas_editar,
+reservas, relatorios, importar, exportar, notificacoes, usuarios, config` (`GET /api/recursos`).
 O recurso `config` cobre limites, paleta (`/api/tema`) e define quem abre a seção Cores.
 
 | Perfil | Padrão |
 |--------|--------|
 | `admin` | tudo |
 | `regional` | tudo, menos `usuarios` e `config` |
-| `operador` | dashboard, planilha, graficos, leds, cidades, campanhas_editar, reservas, notificacoes (sem importar/exportar) |
+| `operador` | dashboard, planilha, graficos, leds, cidades, campanhas_editar, reservas, relatorios, notificacoes (sem importar/exportar) |
 | `visualizador` | dashboard, planilha, graficos, notificacoes (leitura) |
 
 O admin concede **recursos extras por usuário** (`permissoes`; efetivas =

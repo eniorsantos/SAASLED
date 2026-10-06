@@ -44,6 +44,7 @@ const RECURSOS = [
   { id: 'graficos', rotulo: 'Gráficos' },
   { id: 'leds', rotulo: 'Gerenciar LEDs' },
   { id: 'cidades', rotulo: 'Cadastrar cidades' },
+  { id: 'relatorios', rotulo: 'Relatórios PDF' },
   { id: 'campanhas_editar', rotulo: 'Editar campanhas' },
   { id: 'reservas', rotulo: 'Cadastro de reservas' },
   { id: 'importar', rotulo: 'Importar planilha' },
@@ -54,8 +55,8 @@ const RECURSOS = [
 ];
 const PERFIL_DEFAULT = {
   admin: RECURSOS.map((r) => r.id),
-  regional: ['dashboard', 'planilha', 'graficos', 'leds', 'cidades', 'campanhas_editar', 'reservas', 'importar', 'exportar', 'notificacoes'],
-  operador: ['dashboard', 'planilha', 'graficos', 'leds', 'cidades', 'campanhas_editar', 'reservas', 'notificacoes'],
+  regional: ['dashboard', 'planilha', 'graficos', 'leds', 'cidades', 'campanhas_editar', 'reservas', 'relatorios', 'importar', 'exportar', 'notificacoes'],
+  operador: ['dashboard', 'planilha', 'graficos', 'leds', 'cidades', 'campanhas_editar', 'reservas', 'relatorios', 'notificacoes'],
   visualizador: ['dashboard', 'planilha', 'graficos', 'notificacoes'],
 };
 function permissoesEfetivas(login, perfil) {
@@ -580,6 +581,61 @@ app.get('/api/export/planilha.xlsx', authOpcional, requer('exportar'), (req, res
     .attachment('controle-de-leds.xlsx').send(buf);
 });
 
+// — Relatórios PDF: por LED, cidade ou cliente, com status e período —
+const PDFDocument = require('pdfkit');
+const DIMENSOES_REL = {
+  led: { titulo: 'Por LED', chave: (r) => `${r.led} — ${r.cidade}` },
+  cidade: { titulo: 'Por cidade', chave: (r) => r.cidade },
+  cliente: { titulo: 'Por cliente', chave: (r) => r.anunciante },
+};
+app.post('/api/relatorios/pdf', auth(), requer('relatorios'), (req, res) => {
+  const { dimensao = 'led', cidades = '', status = [], anunciante = '', de = '', ate = '' } = req.body || {};
+  if (!DIMENSOES_REL[dimensao]) return res.status(400).json({ erro: 'dimensao inválida (use led, cidade ou cliente)' });
+  if (de && !R.validarDataISO(de)) return res.status(400).json({ erro: 'data "de" inválida (AAAA-MM-DD)' });
+  if (ate && !R.validarDataISO(ate)) return res.status(400).json({ erro: 'data "até" inválida (AAAA-MM-DD)' });
+  const pedido = String(cidades || '').split(',').filter(Boolean);
+  const perm = cidadesPermitidas(req.user);
+  let filtro;
+  if (!perm) filtro = pedido;
+  else {
+    const ef = pedido.length ? pedido.filter((c) => perm.includes(c)) : [...perm];
+    filtro = ef.length ? ef : ['__nenhuma__'];
+  }
+  let rows = linhasPlanilha(filtro, undefined, anunciante);
+  if (Array.isArray(status) && status.length) rows = rows.filter((r) => status.includes(r.status));
+  if (de || ate) rows = rows.filter((r) => (!de || r.fim >= de) && (!ate || r.inicio <= ate));
+  const grupos = new Map();
+  for (const r of rows) {
+    const k = DIMENSOES_REL[dimensao].chave(r);
+    if (!grupos.has(k)) grupos.set(k, []);
+    grupos.get(k).push(r);
+  }
+  const doc = new PDFDocument({ margin: 40, size: 'A4' });
+  const chunks = [];
+  doc.on('data', (c) => chunks.push(c));
+  doc.on('end', () => res.header('Content-Type', 'application/pdf').attachment(`relatorio-${dimensao}.pdf`).send(Buffer.concat(chunks)));
+  const norm = (s) => String(s || '').normalize('NFC');
+  doc.fontSize(18).text(norm(`LED Control — Relatório ${DIMENSOES_REL[dimensao].titulo}`));
+  doc.fontSize(10).fillColor('#555').text(norm(
+    `Gerado em ${R.hojeISO()} por ${req.user.login} · filtros: ` +
+    `cidades=${filtro.join(',') || 'todas'} status=${(status || []).join(',') || 'todos'} ` +
+    `cliente=${anunciante || 'todos'} período=${de || '…'}→${ate || '…'} · ${rows.length} campanha(s)`));
+  doc.moveDown().fillColor('#000');
+  if (!rows.length) doc.fontSize(12).text('Nenhuma campanha para os filtros.');
+  for (const [grupo, itens] of [...grupos.entries()].sort()) {
+    doc.fontSize(13).text(norm(`${grupo} (${itens.length})`), { underline: true });
+    doc.fontSize(9);
+    for (const r of itens) {
+      const linha = `  • ${r.anunciante} — ${r.led} (${r.cidade}) ${r.inicio} → ${r.fim} [${r.status}]`;
+      if (doc.y > 750) doc.addPage();
+      doc.text(norm(linha));
+    }
+    doc.moveDown(0.5);
+  }
+  doc.end();
+  log(req.user.login, 'relatorio.pdf', `${dimensao} linhas=${rows.length}`);
+});
+
 // — Importação de planilha (mesmo padrão da exportação: Cidade;LED;Anunciante;Início;Fim) —
 
 // — Notificações §4.1 (polling + central + varredura) —
@@ -835,7 +891,8 @@ function temaVars() {
 const ehCor = (s) => /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(String(s || ''));
 app.get('/api/tema', (req, res) => res.json({ vars: temaVars(), rotulos: ROTULOS_TEMA }));
 app.put('/api/tema', auth(), requer('config'), (req, res) => {
-  const { vars = {}, restaurar = false } = req.body || {};
+  const { restaurar = false } = req.body || {};
+  const vars = (req.body?.vars && typeof req.body.vars === 'object') ? req.body.vars : {};
   if (restaurar) {
     db.prepare('INSERT OR REPLACE INTO tema (id, vars) VALUES (1, ?)').run('{}');
     log(req.user.login, 'tema.restore', 'padrão');
@@ -866,7 +923,9 @@ app.get('/api/me', auth(), (req, res) => res.json(detalheUsuario(req.user.login)
 app.get('/api/usuarios', auth(), requer('usuarios'), (req, res) =>
   res.json(db.prepare('SELECT login FROM usuarios ORDER BY login').all().map((r) => detalheUsuario(r.login))));
 app.post('/api/usuarios', auth(), requer('usuarios'), (req, res) => {
-  const { login, senha, perfil = 'visualizador', nome = '', cidades = [], permissoes = [] } = req.body || {};
+  const { login, senha, perfil = 'visualizador', nome = '' } = req.body || {};
+  const cidades = Array.isArray(req.body?.cidades) ? req.body.cidades : [];
+  const permissoes = Array.isArray(req.body?.permissoes) ? req.body.permissoes : [];
   if (!login || !senha) return res.status(400).json({ erro: 'login e senha obrigatórios' });
   if (!PERFIL_DEFAULT[perfil]) return res.status(400).json({ erro: `perfil inválido (use ${Object.keys(PERFIL_DEFAULT).join('/')})` });
   for (const c of cidades)

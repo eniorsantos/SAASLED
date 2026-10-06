@@ -281,3 +281,15 @@ ormalizarAnunciante() em todas as escritas e nas chaves de grupo (Dup X = Dup X 
 ## Disponíveis mostra livres/total
 
 - KPI com espacos_total (LEDs x 8, respeita filtro); topbar exibe livres/total espaços.
+
+## Importar/Modelo na Configuração
+
+- Botões saíram da planilha para a seção Importar da Configuração (recurso importar); relatório inline mantido.
+
+## Aba Relatórios com PDF
+
+- Recurso elatorios (13 no catálogo; regional/operador por padrão); POST /api/relatorios/pdf (pdfkit, respeita escopo); aba ao lado da planilha com dimensão, filtros, preview agrupado e download.
+
+## Varredura pos-relatorios
+
+- Download do PDF usava URL relativa (quebrava com VITE_API_URL); POST /api/usuarios e PUT /api/tema aceitavam tipos errados nos arrays/objetos (coagidos para array/objeto).

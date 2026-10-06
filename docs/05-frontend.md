@@ -29,8 +29,7 @@ restante; tooltip com período e status; **selo `x/8 espaços`** por painel) ·
 Distribuição por status (seletor Rosca/Pizza/Barras horizontais, % reais: veiculando vs. reservadas
 vs. livres) · Ocupação por cidade (barras de inventário: veiculando+reservadas ÷ 8) · A vencer (só `a_vencer`) + **A iniciar**
 (`agendada` + reservas próximas, com estados vazios próprios) ·
-Abas **Dashboard (todas as linhas, com rolagem e contador) / Visualizar como planilha / Gráficos / Reservas** (rosca→linha
-latência medida do fetch e período dinâmico.
+Abas **Dashboard (todas as linhas) / Visualizar como planilha / Relatórios (dimensão LED/cidade/cliente + status + período, preview e PDF) / Gráficos / Reservas** · footer com latência e período dinâmico.
 
 ## Comportamentos que importam
 
@@ -57,17 +56,12 @@ latência medida do fetch e período dinâmico.
   fontes, Gantt, dots via `corStatus()`); gráficos Recharts usam os valores
   (rosca vem com as cores da API); formulário com color picker por variável +
   Salvar/Restaurar padrão.
-- **Planilha com CRUD + importação + reservas**: botão **＋ Nova campanha**,
-  **checkbox por linha** (cabeçalho seleciona visíveis) + **🗑 Excluir
-  selecionadas** (com confirmação e relatório; seleção limpa ao trocar
-  filtro/cidade), coluna **Ações** (Editar, **Reservas**, Excluir); modal
-  Reservas lista os períodos com o anunciante de cada um e adiciona/exclui
-  (anunciante vazio = o da campanha); modal de campanha ajusta a **cidade
-  sozinho ao trocar de LED** (nunca grava cidade≠cidade do LED); status
-  `a_vencer` mostra `Nd` ou `encerra hoje`; **⬆ Importar**
-  + **Modelo** com relatório criadas/ignoradas inline. LED lotado volta `409`.
-- **Toasts de sessão**: aparecem em todo login/refresh, arrastáveis pelo título
-  (⠿, com captura de ponteiro — vira flutuante ao arrastar), com Ver campanha
+- **Planilha com CRUD + reservas**: botão **+ Nova campanha**, **checkbox por linha** (cabeçalho seleciona visíveis) + **Excluir selecionadas**
+  (com confirmação e relatório; seleção limpa ao trocar filtro/cidade), coluna **Ações** (Editar, **Reservas**, Excluir); modal
+  Reservas lista os períodos com o anunciante de cada um e adiciona/exclui; modal de campanha ajusta a **cidade**
+  sozinho ao trocar de LED; status `a_vencer` mostra `Nd` ou `encerra hoje`. **Importar/Modelo moram na Configuração >**
+  **Importar** (com relatório criadas/ignoradas). LED lotado volta `409`.
+- **Toasts de sessão**: aparecem em todo login/refresh, arrastáveis pelo título (com captura de ponteiro — vira flutuante)
   (vai à planilha, busca o anunciante e pisca a linha; extrai o nome do texto
   se a API não mandar; sem permissão carregada não desvia de aba) e Fechar
   (dispensa só local); sininho com Ver campanha + Marcar como lida; modais de

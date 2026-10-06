@@ -1,10 +1,10 @@
 ﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, LineChart, Line } from 'recharts'
 import './index.css'
-import { api, salvarTema, FALLBACK_DASH, corStatus, STATUS_ROTULO, br, type Dashboard, type Me, type Notif, type PlanilhaRow } from './api'
+import { api, API, salvarTema, FALLBACK_DASH, corStatus, STATUS_ROTULO, br, type Dashboard, type Me, type Notif, type PlanilhaRow } from './api'
 
-type Tab = 'dashboard' | 'planilha' | 'graficos' | 'reservas'
-type SecaoConfig = 'acesso' | 'cidades' | 'tema'
+type Tab = 'dashboard' | 'planilha' | 'relatorios' | 'graficos' | 'reservas'
+type SecaoConfig = 'acesso' | 'cidades' | 'tema' | 'importar'
 
 // Toast arrastável: aparece em todo login/refresh; fechar só dispensa nesta
 // sessão (não marca como lida — isso é feito na central). Arraste pelo título.
@@ -70,10 +70,6 @@ export default function App() {
       carregar();
     } catch (e: any) { setImportMsg({ tipo: 'erro', texto: e.message }); }
   };
-  // Toasts dispensados nesta sessão (voltam no próximo login/refresh)
-  const [dismissed, setDismissed] = useState<(number | string)[]>([]);
-  // Tipo de gráfico da distribuição por status
-  const [tipoDist, setTipoDist] = useState<'rosca' | 'pizza' | 'barras'>('rosca');
   // Navegação: troca a aba e rola até o painel (senão parece que nada aconteceu)
   const painelRef = useRef<HTMLDivElement>(null);
   const irParaAba = (t: Tab, secao?: SecaoConfig) => {
@@ -121,7 +117,7 @@ export default function App() {
   // Controle de acesso: o que este usuário pode ver/fazer (vem de /api/me)
   const [me, setMe] = useState<Me | null>(null);
   const can = (recurso: string) => online && !!me?.efetivas?.includes(recurso);
-  const temConfig = can('usuarios') || can('cidades') || can('config');
+  const temConfig = can('usuarios') || can('cidades') || can('config') || can('importar');
   // Menu de usuários (admin): CRUD + cidades + recursos por usuário
   const [usersLista, setUsersLista] = useState<any[]>([]);
   const [recursosLista, setRecursosLista] = useState<{ id: string; rotulo: string }[]>([]);
@@ -178,10 +174,62 @@ export default function App() {
       setLat(`${((performance.now() - t0) / 1000).toFixed(1)}s`);
     } catch { setOnline(false); }
   }, [cidade]);
+  // Aba Relatórios: dimensão + cidade/LED/cliente + status + período → PDF
+  const [dismissed, setDismissed] = useState<(number | string)[]>([]);
+  const [relDim, setRelDim] = useState<'led' | 'cidade' | 'cliente'>('led');
+  const [relCidade, setRelCidade] = useState('');
+  const [relLed, setRelLed] = useState('');
+  const [relAnu, setRelAnu] = useState('');
+  const [relStatus, setRelStatus] = useState<string[]>(['veiculando', 'a_vencer', 'agendada', 'reservada', 'vencida']);
+  const [relDe, setRelDe] = useState('');
+  const [relAte, setRelAte] = useState('');
+  const [relMsg, setRelMsg] = useState<{ tipo: 'ok' | 'erro'; texto: string } | null>(null);
+  const relChave = (r: PlanilhaRow) =>
+    relDim === 'led' ? `${r.led} — ${r.cidade}` : relDim === 'cidade' ? r.cidade : r.anunciante;
+  const relFiltradas = useMemo(() => rows.filter((r) =>
+    (!relCidade || r.cidade === (cidades.find((c) => c.id === relCidade)?.nome || relCidade)) &&
+    (!relLed || r.led === relLed) &&
+    (!relAnu || (r.anunciante || '').toLowerCase().includes(relAnu.toLowerCase())) &&
+    (!relStatus.length || relStatus.includes(r.status)) &&
+    (!relDe || r.fim >= relDe) && (!relAte || r.inicio <= relAte),
+  ), [rows, relCidade, relLed, relAnu, relStatus, relDe, relAte, cidades]);
+  const relGrupos = useMemo(() => {
+    const m = new Map<string, PlanilhaRow[]>();
+    for (const r of relFiltradas) {
+      const k = relChave(r);
+      if (!m.has(k)) m.set(k, []);
+      m.get(k)!.push(r);
+    }
+    return [...m.entries()].sort();
+  }, [relFiltradas]); // eslint-disable-line react-hooks/exhaustive-deps
+  const gerarPdf = async () => {
+    setRelMsg(null);
+    try {
+      const token = localStorage.getItem('led_token');
+      const resp = await fetch(`${API}/api/relatorios/pdf`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({ dimensao: relDim, cidades: relCidade, status: relStatus, anunciante: relAnu, de: relDe, ate: relAte }),
+      });
+      if (!resp.ok) throw new Error((await resp.json().catch(() => ({})) as any).erro || `HTTP ${resp.status}`);
+      const blob = await resp.blob();
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `relatorio-${relDim}.pdf`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+      setRelMsg({ tipo: 'ok', texto: `PDF gerado (${relFiltradas.length} campanhas).` });
+    } catch (e: any) { setRelMsg({ tipo: 'erro', texto: e.message }); }
+  };
+  // Tipo de gráfico da distribuição por status
+  const [tipoDist, setTipoDist] = useState<'rosca' | 'pizza' | 'barras'>('rosca');
 
   useEffect(() => { carregar(); const i = setInterval(carregar, 30000); return () => clearInterval(i); }, [carregar]);
 
-  // Importação de planilha no padrão Cidade;LED;Anunciante;Início;Fim
+
+  // Gantt: um bloco por campanha COM NOME (veiculando, reservada e vencida) +
+  // LIVRE completando — LED nunca parece vazio havendo campanhas
+
   const importarArquivo = async (file: File | undefined) => {
     if (!file) return;
     setImportMsg(null);
@@ -224,9 +272,6 @@ export default function App() {
     r.sort((a, b) => String((a as any)[sortK]).localeCompare(String((b as any)[sortK])) * sortD);
     return r;
   }, [rows, q, stFilter, sortK, sortD]);
-
-  // Gantt: um bloco por campanha COM NOME (veiculando, reservada e vencida) +
-  // LIVRE completando — LED nunca parece vazio havendo campanhas
   const ganttBlocos = (camps: any[]) => {
     const clsPorStatus: Record<string, string> = { veiculando: 'veic', a_vencer: 'veic', agendada: 'res', reservada: 'res', vencida: 'venc' };
     const rotuloStatus: Record<string, string> = { agendada: 'RESERVADA', reservada: 'RESERVADA', vencida: 'ENCERRADA' };
@@ -276,10 +321,12 @@ export default function App() {
   }, [tema]);
 
   // Aba padrão respeita a visibilidade do usuário (só com permissões carregadas)
+  // Aba padrão respeita a visibilidade do usuário (só com permissões carregadas)
   useEffect(() => {
     if (!me || !online) return;
     if (tab === 'planilha' && !can('planilha')) setTab('dashboard');
     else if (tab === 'graficos' && !can('graficos')) setTab('dashboard');
+    else if (tab === 'relatorios' && !can('relatorios')) setTab('dashboard');
     else if (tab === 'reservas' && !can('reservas')) setTab('dashboard');
   }, [me]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -328,8 +375,8 @@ export default function App() {
     if (!confirm(`Excluir a campanha "${row.anunciante}" (${row.led})?`)) return;
     try { await api.excluirCampanha(id); carregar(); } catch (e: any) { alert(e.message); }
   };
-
   // Dados de acesso para a aba Config (usuários + catálogo de recursos)
+
   const carregarAcesso = useCallback(async () => {
     setUserMsg(null);
     try {
@@ -413,12 +460,19 @@ export default function App() {
     if (configSecao === 'acesso' && !can('usuarios')) {
       if (can('cidades')) setConfigSecao('cidades');
       else if (can('config')) setConfigSecao('tema');
+      else if (can('importar')) setConfigSecao('importar');
     } else if (configSecao === 'cidades' && !can('cidades')) {
       if (can('usuarios')) setConfigSecao('acesso');
       else if (can('config')) setConfigSecao('tema');
+      else if (can('importar')) setConfigSecao('importar');
     } else if (configSecao === 'tema' && !can('config')) {
       if (can('usuarios')) setConfigSecao('acesso');
       else if (can('cidades')) setConfigSecao('cidades');
+      else if (can('importar')) setConfigSecao('importar');
+    } else if (configSecao === 'importar' && !can('importar')) {
+      if (can('usuarios')) setConfigSecao('acesso');
+      else if (can('cidades')) setConfigSecao('cidades');
+      else if (can('config')) setConfigSecao('tema');
     }
     if (can('usuarios')) carregarAcesso();
   }, [tela, me]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -893,6 +947,7 @@ export default function App() {
           <div className="tabs">
             <div className={`tab ${tab === 'dashboard' ? 'active' : ''}`} onClick={() => setTab('dashboard')}>Dashboard</div>
             {(can('planilha') || !online) && <div className={`tab ${tab === 'planilha' ? 'active' : ''}`} onClick={() => setTab('planilha')}>Visualizar como planilha</div>}
+            {(can('relatorios') || !online) && <div className={`tab ${tab === 'relatorios' ? 'active' : ''}`} onClick={() => setTab('relatorios')}>Relatórios</div>}
             {(can('graficos') || !online) && <div className={`tab ${tab === 'graficos' ? 'active' : ''}`} onClick={() => setTab('graficos')}>Gráficos</div>}
             {can('reservas') && <div className={`tab ${tab === 'reservas' ? 'active' : ''}`} onClick={() => setTab('reservas')}>Reservas</div>}
           </div>
@@ -908,15 +963,6 @@ export default function App() {
                 {podeEditar && <button onClick={() => abrirNovaCampanha()}>＋ Nova campanha</button>}
                 {podeEditar && selecionadas.length > 0 && (
                   <button className="danger" onClick={excluirSelecionadas}>🗑 Excluir {selecionadas.length} selecionada(s)</button>
-                )}
-                {can('importar') && (
-                  <>
-                    <label className="toolbar-upload" title="Importar planilha no padrão Cidade;LED;Anunciante;Início;Fim;ReservaN_Início;ReservaN_Fim…">
-                      ⬆ Importar
-                      <input type="file" accept=".csv,.txt" hidden onChange={(e) => { importarArquivo(e.target.files?.[0]); e.target.value = ''; }} />
-                    </label>
-                    <a href={api.modeloImportUrl}><button className="ghost" type="button">Modelo</button></a>
-                  </>
                 )}
                 {can('exportar') && <a href={api.exportUrl('xlsx', cidade, q, stFilter)}><button>⬇ .xlsx</button></a>}
                 {can('exportar') && <a href={api.exportUrl('csv', cidade, q, stFilter)}><button>⬇ .csv</button></a>}
@@ -1020,6 +1066,58 @@ export default function App() {
             </>
           )}
 
+          {tab === 'relatorios' && (can('relatorios') || !online) && (
+            <>
+              <div className="toolbar">
+                <select value={relDim} onChange={(e) => setRelDim(e.target.value as any)}>
+                  <option value="led">Por LED</option>
+                  <option value="cidade">Por cidade</option>
+                  <option value="cliente">Por cliente</option>
+                </select>
+                <select value={relCidade} onChange={(e) => setRelCidade(e.target.value)}>
+                  <option value="">Todas as cidades</option>
+                  {cidades.map((c: any) => <option key={c.id} value={c.id}>{c.nome}</option>)}
+                </select>
+                <select value={relLed} onChange={(e) => setRelLed(e.target.value)}>
+                  <option value="">Todos os LEDs</option>
+                  {ledsLista.map((l: any) => <option key={l.codigo} value={l.codigo}>{l.codigo}</option>)}
+                </select>
+                <input placeholder="Cliente" value={relAnu} onChange={(e) => setRelAnu(e.target.value)} />
+                <input type="date" value={relDe} onChange={(e) => setRelDe(e.target.value)} />
+                <input type="date" value={relAte} onChange={(e) => setRelAte(e.target.value)} />
+                <button onClick={gerarPdf}>Gerar PDF ({relFiltradas.length})</button>
+              </div>
+              <div className="toolbar">
+                {Object.keys(STATUS_ROTULO).filter((s) => s !== 'livre').map((s) => (
+                  <label key={s} className="check"><input type="checkbox"
+                    checked={relStatus.includes(s)}
+                    onChange={() => setRelStatus((xs) => xs.includes(s) ? xs.filter((x) => x !== s) : [...xs, s])} />{STATUS_ROTULO[s]}</label>
+                ))}
+              </div>
+              {relMsg && <p className={`spot-msg ${relMsg.tipo}`}>{relMsg.texto}</p>}
+              <div style={{ overflowX: 'auto', maxHeight: 380, overflowY: 'auto' }}>
+                {relGrupos.map(([g, itens]) => (
+                  <div key={g}>
+                    <h2 style={{ fontSize: '.85rem', marginTop: 12 }}>{g} ({itens.length})</h2>
+                    <table>
+                      <thead><tr><th>Cidade</th><th>LED</th><th>Anunciante</th><th>Início</th><th>Fim</th><th>Status</th></tr></thead>
+                      <tbody>
+                        {itens.map((r, i) => (
+                          <tr key={r.id || i}>
+                            <td>{r.cidade}</td><td>{r.led}</td><td>{r.anunciante}</td>
+                            <td>{br(r.inicio)}</td><td>{br(r.fim)}</td>
+                            <td><span className="status-dot" style={{ background: corStatus(r.status) }} />{STATUS_ROTULO[r.status] || r.status}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ))}
+                {relGrupos.length === 0 && <p className="sub">Nenhuma campanha para os filtros.</p>}
+              </div>
+            </>
+          )}
+
           {tab === 'graficos' && (can('graficos') || !online) && (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18 }}>
               <div><h2 style={{ fontSize: '.85rem' }}>EVOLUÇÃO MENSAL (%)</h2>
@@ -1062,6 +1160,7 @@ export default function App() {
                 {can('usuarios') && <div className={`tab ${configSecao === 'acesso' ? 'active' : ''}`} onClick={() => setConfigSecao('acesso')}>Acesso</div>}
                 {can('cidades') && <div className={`tab ${configSecao === 'cidades' ? 'active' : ''}`} onClick={() => setConfigSecao('cidades')}>Cidades</div>}
                 {can('config') && <div className={`tab ${configSecao === 'tema' ? 'active' : ''}`} onClick={() => setConfigSecao('tema')}>Cores</div>}
+                {can('importar') && <div className={`tab ${configSecao === 'importar' ? 'active' : ''}`} onClick={() => setConfigSecao('importar')}>Importar</div>}
               </div>
               {configSecao === 'acesso' && can('usuarios') && (
                 <>
@@ -1073,6 +1172,19 @@ export default function App() {
                 <>
                   <p className="sub">Conforme a tabela cidades: id, nome, UF e fuso. Exclusão só de cidade vazia (sem LEDs).</p>
                   {conteudoCidades()}
+                </>
+              )}
+              {configSecao === 'importar' && can('importar') && (
+                <>
+                  <p className="sub">Planilha no padrão Cidade;LED;Anunciante;Início;Fim;ReservaN_Anunciante;ReservaN_Início;ReservaN_Fim — datas BR, ISO ou por extenso.</p>
+                  <div className="toolbar" style={{ marginBottom: 0 }}>
+                    <label className="toolbar-upload" title="Importar planilha">
+                      ⬆ Importar planilha
+                      <input type="file" accept=".csv,.txt" hidden onChange={(e) => { importarArquivo(e.target.files?.[0]); e.target.value = ''; }} />
+                    </label>
+                    <a href={api.modeloImportUrl}><button className="ghost" type="button">⬇ Modelo</button></a>
+                  </div>
+                  {importMsg && <p className={`spot-msg ${importMsg.tipo}`}>{importMsg.texto}</p>}
                 </>
               )}
               {configSecao === 'tema' && can('config') && (

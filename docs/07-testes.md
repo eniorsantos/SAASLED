@@ -53,7 +53,9 @@ $env:DB_PATH = '.\test-smoke.db'; npm test; Remove-Item .\test-smoke.db
 20. cidades: incluir, duplicada `409`, editar nome, exclusão com LEDs `409`,
     exclusão de vazia `200`;
 21. tema: padrão do mockup, troca/restaura (admin), `403` não-admin, `400`
-    cor/variável inválida.
+    cor/variável inválida;
+22. relatórios PDF: por cliente filtra e volta `%PDF`; dimensão inválida
+    `400`; sem login `401`.
 
 ## Checks manuais usados no debug
 

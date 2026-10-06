@@ -65,6 +65,7 @@ Legenda de auth: 🔓 pública · 🔑 login · ✏️ admin/regional/operador �
 | GET | `/api/export/planilha.xlsx?...` | `exportar` | mesmos filtros (+`?token=`); aba `Veiculação` |
 | GET | `/api/import/modelo.csv` | 🔓 | modelo no padrão (cabeçalho + 2 exemplos, com Reserva1) |
 | POST | `/api/import/planilha` | `importar` | `{csv}` → `{total, criadas, reservas_criadas, anos_ajustados, ignoradas[{linha, anunciante, motivo, aviso?}], ids}` (doc 03 §3.7) |
+| POST | `/api/relatorios/pdf` | `relatorios` | `{dimensao led/cidade/cliente, cidades?, status[]?, anunciante?, de?, ate?}` → PDF (respeita escopo) |
 
 ## Notificações / auditoria (§4.1, §9.2)
 

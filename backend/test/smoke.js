@@ -281,6 +281,19 @@ const server = app.listen(0, async () => {
     assert.equal((await putTema({ vars: { teal: '#00ff00' } }, opLogin.token)).status, 403, 'não-admin não edita tema');
     assert.equal((await putTema({ vars: { teal: 'azul' } }, login.token)).status, 400, 'cor inválida rejeitada');
     assert.equal((await putTema({ vars: { xyz: '#fff' } }, login.token)).status, 400, 'variável desconhecida rejeitada');
+    // relatórios PDF por dimensão
+    const pdf = await (await fetch(base + '/api/relatorios/pdf', { method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + login.token },
+      body: JSON.stringify({ dimensao: 'cliente', status: ['veiculando'] }) }));
+    assert.equal(pdf.status, 200, 'PDF gerado');
+    assert.ok((pdf.headers.get('content-type') || '').includes('pdf'), 'content-type pdf');
+    assert.equal(Buffer.from(await pdf.arrayBuffer()).slice(0, 4).toString(), '%PDF', 'binário PDF válido');
+    assert.equal((await (await fetch(base + '/api/relatorios/pdf', { method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + login.token },
+      body: JSON.stringify({ dimensao: 'x' }) })).status), 400, 'dimensão inválida rejeitada');
+    assert.equal((await (await fetch(base + '/api/relatorios/pdf', { method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ dimensao: 'led' }) })).status), 401, 'PDF sem login → 401');
     async function postResAuth(tok, cid, body) {
       return fetch(base + '/api/campanhas/' + cid + '/reservas', {
         method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + tok },
