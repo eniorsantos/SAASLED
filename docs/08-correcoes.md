@@ -317,3 +317,8 @@ ormalizarAnunciante() em todas as escritas e nas chaves de grupo (Dup X = Dup X 
 ## Logo da empresa
 
 - config.logo_dataurl + GET|PUT|DELETE /api/logo (recurso config, valida tipo e 512KB); seção Logo na Configuração com preview 38px; brand usa a logo em tamanho fixo.
+
+## Vite quebrava por BOM no package.json
+
+- 
+pm run dev falhava com Failed to load PostCSS config ... Unexpected token: edições via script haviam gravado rontend/package.json (e index.html) com BOM UTF-8, que o JSON.parse do Vite rejeita. Removido o BOM; cuidado: [System.Text.Encoding]::UTF8 do .NET grava **com** BOM — usar New-Object System.Text.UTF8Encoding($false) em scripts.

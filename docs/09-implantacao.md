@@ -126,6 +126,7 @@ Aviso `chunk > 500 kB` do Recharts é esperado e inofensivo.
 |---------|----------------|------|
 | `EADDRINUSE :3001` | API já rodando | `Get-Process node \| Stop-Process`, ou `PORT=3002 npm start` (+ ajustar proxy) |
 | Painel `OFFLINE` | API fora do ar / proxy errado | conferir A.2 etapa 3; `VITE_API_URL` só quando sem proxy |
+| `Failed to load PostCSS config` | `package.json`/`index.html` com BOM | regrave sem BOM (UTF8 sem preamble) |
 | `Cannot find module better-sqlite3` | install incompleto | `cd backend; npm install` de novo (ver A.0) |
 | Login rejeitado | banco zerado/seed não rodou | checar `data.db` existe; ver log do boot |
 | `tsc` acusa erro | código alterado | corrigir o tipo; nunca commitar com `tsc` vermelho |
