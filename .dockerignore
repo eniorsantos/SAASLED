@@ -4,6 +4,7 @@ data.db
 *.db-shm
 *.db-wal
 *.db-journal
-.env
+.git/
+docs/
 *.log
 .DS_Store

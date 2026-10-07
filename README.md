@@ -40,7 +40,7 @@ nas cores/elementos de `mockup-led-saas`.
 - Aba **Relatórios**: por LED/cidade/cliente, com status e período, preview
   agrupado e download em PDF.
 
-## Rodar
+## Rodar (Docker)`r`n`r`n```powershell`r`ncd docker; cp .env.example .env  # JWT_SECRET obrigatório`r`ndocker compose up -d --build   # http://localhost:8080`r`n````r`n`r`n## Rodar (local)
 
 ```powershell
 cd backend; npm install; npm start      # API

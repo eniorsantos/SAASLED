@@ -1,0 +1,40 @@
+services:
+  api:
+    build:
+      context: ..
+      dockerfile: docker/backend.Dockerfile
+    image: saasled-api:latest
+    container_name: saasled-api
+    restart: unless-stopped
+    environment:
+      JWT_SECRET: ${JWT_SECRET:?defina JWT_SECRET no .env}
+      HOJE: ${HOJE:-}
+      SEED: ${SEED:-}
+    volumes:
+      - led-data:/data
+    expose:
+      - "3001"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3001/api/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  web:
+    build:
+      context: ..
+      dockerfile: docker/frontend.Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:-}
+    image: saasled-web:latest
+    container_name: saasled-web
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_started
+    ports:
+      - "${WEB_PORT:-8080}:80"
+
+volumes:
+  led-data:
+    name: saasled-data

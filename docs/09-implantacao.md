@@ -135,6 +135,17 @@ Aviso `chunk > 500 kB` do Recharts é esperado e inofensivo.
 
 # PARTE B — Implantação em nuvem
 
+## B.0 Docker Compose (pasta `docker/` — recomendado para VPS/nuvem)
+
+```powershell
+cd docker; cp .env.example .env   # preencha JWT_SECRET
+docker compose up -d --build      # painel em http://<host>:8080
+```
+
+API + painel com SQLite em volume persistente e proxy `/api` no Nginx.
+Detalhes e variáveis em `docker/README.md`. Sem daemon local os builds não
+foram executados aqui — valide com `docker compose build` no destino.
+
 ## B.0 Decisões antes de publicar
 
 1. **SQLite persiste em arquivo.** Hospedagens efêmeras (Render/Railway sem disco)

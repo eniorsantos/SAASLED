@@ -338,3 +338,7 @@ pm run dev falhava com Failed to load PostCSS config ... Unexpected token: ediç
 ## Espaços por LED individual
 
 - leds.espacos_total (nulo = padrão global); capacidade, KPIs, rosca e ocupação usam o total individual; menu com campo Espaços; espacos_proprio no GET.
+
+## Containerização em pasta nova
+
+- docker/ com Dockerfiles (API Node 22 + painel Nginx), compose (volume SQLite, healthcheck, proxy), .env.example, .dockerignore e README; .env no .gitignore. Compose validado (config); build exige daemon.
