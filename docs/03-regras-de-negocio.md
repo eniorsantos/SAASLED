@@ -79,7 +79,8 @@ mantida).
 ## 3.5 Capacidade: 8 espaços de cliente por LED
 
 Cada LED tem `max_clientes_por_led` espaços (padrão 8, em `config`, editável
-pelo admin). Um espaço = um **anunciante distinto com campanha não-vencida**
+pelo admin) **ou total próprio** (`leds.espacos_total`, vazio = padrão).
+Um espaço = um **anunciante distinto com campanha não-vencida**
 (`fim >= hoje`) no LED (`espacosUsados()`).
 
 - `POST /api/campanhas` e `PUT /api/campanhas/:id` (ao trocar LED/anunciante):

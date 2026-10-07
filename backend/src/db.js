@@ -17,7 +17,8 @@ CREATE TABLE IF NOT EXISTS cidades (
   id TEXT PRIMARY KEY, nome TEXT NOT NULL, uf TEXT NOT NULL DEFAULT '', fuso TEXT NOT NULL DEFAULT 'America/Maceio'
 );
 CREATE TABLE IF NOT EXISTS leds (
-  codigo TEXT PRIMARY KEY, endereco TEXT NOT NULL, cidade_id TEXT NOT NULL REFERENCES cidades(id)
+  codigo TEXT PRIMARY KEY, endereco TEXT NOT NULL, cidade_id TEXT NOT NULL REFERENCES cidades(id),
+  espacos_total INTEGER
 );
 CREATE TABLE IF NOT EXISTS anunciantes ( nome TEXT PRIMARY KEY );
 CREATE TABLE IF NOT EXISTS campanhas (
@@ -143,6 +144,8 @@ try {
   if (!cols.includes('motivo_autorizacao')) db.exec('ALTER TABLE programacoes ADD COLUMN motivo_autorizacao TEXT');
   const resCols = db.prepare('PRAGMA table_info(reservas)').all().map((c) => c.name);
   if (!resCols.includes('anunciante')) db.exec("ALTER TABLE reservas ADD COLUMN anunciante TEXT NOT NULL DEFAULT ''");
+  const ledCols = db.prepare('PRAGMA table_info(leds)').all().map((c) => c.name);
+  if (!ledCols.includes('espacos_total')) db.exec('ALTER TABLE leds ADD COLUMN espacos_total INTEGER');
   const cfgCols = db.prepare('PRAGMA table_info(config)').all().map((c) => c.name);
   if (!cfgCols.includes('max_clientes_por_led')) db.exec('ALTER TABLE config ADD COLUMN max_clientes_por_led INTEGER NOT NULL DEFAULT 8');
   if (!cfgCols.includes('logo_dataurl')) db.exec("ALTER TABLE config ADD COLUMN logo_dataurl TEXT NOT NULL DEFAULT ''");

@@ -108,6 +108,11 @@ function cidadeDoLed(ledCodigo) {
   const l = db.prepare('SELECT * FROM leds WHERE codigo = ?').get(ledCodigo);
   return l ? l.cidade_id : null;
 }
+// Total de espaços do LED: individual ou padrão global (max_clientes_por_led)
+function espacosTotalLed(ledCodigo, cfg) {
+  const l = db.prepare('SELECT espacos_total FROM leds WHERE codigo = ?').get(ledCodigo);
+  return (l && Number.isInteger(l.espacos_total) && l.espacos_total > 0) ? l.espacos_total : cfg.max_clientes_por_led;
+}
 
 app.post('/api/auth/login', (req, res) => {
   const { login, senha } = req.body || {};
@@ -170,40 +175,47 @@ app.get('/api/leds', authOpcional, (req, res) => {
   res.json(rows.map((l) => ({
     ...l,
     espacos_usados: R.espacosUsados(db, l.codigo, hoje).length,
-    espacos_total: cfg.max_clientes_por_led,
+    espacos_total: espacosTotalLed(l.codigo, cfg),
+    espacos_proprio: l.espacos_total ?? null,
   })));
 });
 app.post('/api/leds', auth(), requer('leds'), (req, res) => {
-  const { codigo, endereco, cidade_id } = req.body || {};
+  const { codigo, endereco, cidade_id, espacos_total } = req.body || {};
   if (!codigo || !endereco || !cidade_id) return res.status(400).json({ erro: 'codigo, endereco, cidade_id obrigatórios' });
+  if (espacos_total !== undefined && espacos_total !== null && espacos_total !== '' && (!Number.isInteger(espacos_total) || espacos_total < 1))
+    return res.status(400).json({ erro: 'espacos_total deve ser inteiro >= 1 (ou vazio = padrão)' });
   if (!db.prepare('SELECT * FROM cidades WHERE id = ?').get(cidade_id))
     return res.status(400).json({ erro: `cidade "${cidade_id}" não cadastrada` });
   if (!escopoCidadeOk(req.user, cidade_id))
     return res.status(403).json({ erro: ERRO_ESCOPO });
+  const esp = (espacos_total === undefined || espacos_total === null || espacos_total === '') ? null : espacos_total;
   try {
-    db.prepare('INSERT INTO leds (codigo,endereco,cidade_id) VALUES (?,?,?)').run(codigo.trim(), endereco, cidade_id);
+    db.prepare('INSERT INTO leds (codigo,endereco,cidade_id,espacos_total) VALUES (?,?,?,?)').run(codigo.trim(), endereco, cidade_id, esp);
   } catch { return res.status(409).json({ erro: `LED "${codigo}" já cadastrado` }); }
   log(req.user.login, 'led.create', codigo);
-  res.status(201).json({ codigo, endereco, cidade_id });
+  res.status(201).json({ codigo, endereco, cidade_id, espacos_total: esp });
 });
 app.put('/api/leds/:codigo', auth(), requer('leds'), (req, res) => {
   const cur = db.prepare('SELECT * FROM leds WHERE codigo = ?').get(req.params.codigo);
   if (!cur) return res.status(404).json({ erro: 'LED não encontrado' });
-  const { endereco = cur.endereco, cidade_id = cur.cidade_id, novo_codigo = cur.codigo } = req.body || {};
+  const { endereco = cur.endereco, cidade_id = cur.cidade_id, novo_codigo = cur.codigo, espacos_total } = req.body || {};
   if (!endereco) return res.status(400).json({ erro: 'endereco obrigatório' });
+  if (espacos_total !== undefined && espacos_total !== null && espacos_total !== '' && (!Number.isInteger(espacos_total) || espacos_total < 1))
+    return res.status(400).json({ erro: 'espacos_total deve ser inteiro >= 1 (ou vazio = padrão)' });
   if (!db.prepare('SELECT * FROM cidades WHERE id = ?').get(cidade_id))
     return res.status(400).json({ erro: `cidade "${cidade_id}" não cadastrada` });
   if (!escopoCidadeOk(req.user, cur.cidade_id) || !escopoCidadeOk(req.user, cidade_id))
     return res.status(403).json({ erro: ERRO_ESCOPO });
   const renomear = novo_codigo !== cur.codigo;
+  const esp = espacos_total === undefined ? cur.espacos_total : (espacos_total === null || espacos_total === '' ? null : espacos_total);
   const tx = db.transaction(() => {
     if (renomear) {
-      db.prepare('INSERT INTO leds (codigo,endereco,cidade_id) VALUES (?,?,?)').run(novo_codigo, endereco, cidade_id);
+      db.prepare('INSERT INTO leds (codigo,endereco,cidade_id,espacos_total) VALUES (?,?,?,?)').run(novo_codigo, endereco, cidade_id, esp);
       db.prepare('UPDATE campanhas SET led_codigo = ? WHERE led_codigo = ?').run(novo_codigo, cur.codigo);
       db.prepare('UPDATE programacoes SET led_codigo = ? WHERE led_codigo = ?').run(novo_codigo, cur.codigo);
       db.prepare('DELETE FROM leds WHERE codigo = ?').run(cur.codigo);
     } else {
-      db.prepare('UPDATE leds SET endereco = ?, cidade_id = ? WHERE codigo = ?').run(endereco, cidade_id, cur.codigo);
+      db.prepare('UPDATE leds SET endereco = ?, cidade_id = ?, espacos_total = ? WHERE codigo = ?').run(endereco, cidade_id, esp, cur.codigo);
     }
   });
   try { tx(); } catch { return res.status(409).json({ erro: `LED "${novo_codigo}" já cadastrado` }); }
@@ -257,11 +269,12 @@ app.post('/api/campanhas', auth(), requer('campanhas_editar'), (req, res) => {
     return res.status(400).json({ erro: `LED ${led_codigo} é de "${ledCidade}", não de "${cidade_id}"` });
   if (!escopoCidadeOk(req.user, cidade_id))
     return res.status(403).json({ erro: ERRO_ESCOPO });
-  // Capacidade: cada LED tem max_clientes_por_led espaços (anunciantes distintos não-vencidos)
+  // Capacidade: cada LED tem seu total de espaços (individual ou padrão global)
   const cfg = R.getConfig(db), hoje = R.hojeISO();
   const usados = R.espacosUsados(db, led_codigo, hoje);
-  if (!usados.includes(anunciante) && usados.length >= cfg.max_clientes_por_led)
-    return res.status(409).json({ erro: `LED ${led_codigo} lotado: ${usados.length}/${cfg.max_clientes_por_led} espaços ocupados`, espacos: { usados: usados.length, total: cfg.max_clientes_por_led } });
+  const totalEsp = espacosTotalLed(led_codigo, cfg);
+  if (!usados.includes(anunciante) && usados.length >= totalEsp)
+    return res.status(409).json({ erro: `LED ${led_codigo} lotado: ${usados.length}/${totalEsp} espaços ocupados`, espacos: { usados: usados.length, total: totalEsp } });
   db.prepare('INSERT OR IGNORE INTO anunciantes (nome) VALUES (?)').run(anunciante);
   db.prepare('INSERT INTO campanhas (id,cidade_id,led_codigo,anunciante,inicio,fim,reservada) VALUES (?,?,?,?,?,?,?)')
     .run(id, cidade_id, led_codigo, anunciante, inicio, fim, reservada ? 1 : 0);
@@ -288,9 +301,10 @@ app.put('/api/campanhas/:id', auth(), requer('campanhas_editar'), (req, res) => 
   // Capacidade ao trocar de LED/anunciante (ignora a própria campanha na contagem)
   if (nx.led_codigo !== cur.led_codigo || nx.anunciante !== cur.anunciante) {
     const cfg2 = R.getConfig(db);
+    const total2 = espacosTotalLed(nx.led_codigo, cfg2);
     const usados = R.espacosUsados(db, nx.led_codigo, R.hojeISO(), req.params.id);
-    if (!usados.includes(nx.anunciante) && usados.length >= cfg2.max_clientes_por_led)
-      return res.status(409).json({ erro: `LED ${nx.led_codigo} lotado: ${usados.length}/${cfg2.max_clientes_por_led} espaços ocupados`, espacos: { usados: usados.length, total: cfg2.max_clientes_por_led } });
+    if (!usados.includes(nx.anunciante) && usados.length >= total2)
+      return res.status(409).json({ erro: `LED ${nx.led_codigo} lotado: ${usados.length}/${total2} espaços ocupados`, espacos: { usados: usados.length, total: total2 } });
   }
   db.prepare('INSERT OR IGNORE INTO anunciantes (nome) VALUES (?)').run(nx.anunciante);
   db.prepare('UPDATE campanhas SET anunciante=?,inicio=?,fim=?,reservada=?,led_codigo=?,cidade_id=? WHERE id=?')
@@ -377,9 +391,10 @@ app.post('/api/reservas', auth(), requer('reservas'), (req, res) => {
   let campanhaCriada = null;
   if (!camp) {
     const cfg = R.getConfig(db);
+    const totalEsp = espacosTotalLed(led_codigo, cfg);
     const usados = R.espacosUsados(db, led_codigo, R.hojeISO());
-    if (usados.length >= cfg.max_clientes_por_led)
-      return res.status(409).json({ erro: `LED ${led_codigo} lotado (${usados.length}/${cfg.max_clientes_por_led})` });
+    if (usados.length >= totalEsp)
+      return res.status(409).json({ erro: `LED ${led_codigo} lotado (${usados.length}/${totalEsp})` });
     campanhaCriada = `c${Date.now()}`;
     db.prepare('INSERT OR IGNORE INTO anunciantes (nome) VALUES (?)').run(anunciante);
     db.prepare('INSERT INTO campanhas (id,cidade_id,led_codigo,anunciante,inicio,fim,reservada) VALUES (?,?,?,?,?,?,1)')
@@ -513,14 +528,15 @@ app.get('/api/dashboard', authOpcional, (req, res) => {
   const aVencer = new Set(comSt
     .filter((c) => { const d = R.diasEntre(c.fim, R.hojeISO()); return d >= 0 && d <= 7 && c.inicio <= R.hojeISO(); })
     .map((c) => c.led_codigo)).size;
-  // Disponibilidade = ESPAÇOS livres (8 − usados por LED), não painéis vazios
+  // Disponibilidade = ESPAÇOS livres (total individual ou padrão por LED)
   const livres = leds.reduce((acc, l) => {
     const usados = new Set(comSt.filter((c) => c.led_codigo === l.codigo && c.status !== 'vencida').map((c) => c.anunciante)).size;
-    return acc + Math.max(0, cfg.max_clientes_por_led - usados);
+    return acc + Math.max(0, espacosTotalLed(l.codigo, cfg) - usados);
   }, 0);
+  const totalEspacos = leds.reduce((acc, l) => acc + espacosTotalLed(l.codigo, cfg), 0);
   const tema = temaVars();
   // Rosca de inventário: slots veiculando vs. reservados vs. livres (coerente com o KPI)
-  let sV = 0, sR = 0;
+  let sV = 0, sR = 0, sL = livres;
   for (const l of leds) {
     const porAnu = new Map();
     for (const c of comSt.filter((cc) => cc.led_codigo === l.codigo && cc.status !== 'vencida')) {
@@ -530,7 +546,6 @@ app.get('/api/dashboard', authOpcional, (req, res) => {
     sV += [...porAnu.values()].filter((x) => x === 'v').length;
     sR += porAnu.size - [...porAnu.values()].filter((x) => x === 'v').length;
   }
-  const sL = livres; // Σ(8 − usados) — mesmo número do KPI
   const totDist = Math.max(1, sV + sR + sL);
   const pct = (n) => Math.round((n / totDist) * 100);
   const distV = [{ name: 'Veiculando', value: pct(sV), color: tema.teal },
@@ -541,18 +556,19 @@ app.get('/api/dashboard', authOpcional, (req, res) => {
     .filter((c) => filtro.length === 0 || filtro.includes(c.id));
   res.json({
     hoje: R.hojeISO(), periodo: PERIODO,
-    kpis: { ocupacao_media: ocupMedia, leds_ativos: `${leds.length}/${totalLeds}`, a_vencer_7d: aVencer, livres, espacos_total: leds.length * cfg.max_clientes_por_led },
+    kpis: { ocupacao_media: ocupMedia, leds_ativos: `${leds.length}/${totalLeds}`, a_vencer_7d: aVencer, livres, espacos_total: totalEspacos },
     distribuicao: distV,
     evolucao_mensal: R.ultimos6Meses(R.hojeISO()).map(({ mes, ini, fim }) => {
       const vals = leds.map((l) => R.ocupacao(camps.filter((c) => c.led_codigo === l.codigo), ini, fim));
       return { mes, ocupacao: vals.length ? +(vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(1) : 0 };
     }),
     ocupacao_por_cidade: cidades.map((c) => {
-      // Inventário comprometido: anunciantes veiculando + reservadas (não-vencidas) ÷ 8 espaços
+      // Inventário comprometido: anunciantes não-vencidas ÷ total individual do LED
       const ledsC = leds.filter((l) => l.cidade_id === c.id);
       const vals = ledsC.map((l) => {
         const usados = new Set(comSt.filter((cc) => cc.led_codigo === l.codigo && cc.status !== 'vencida').map((cc) => cc.anunciante)).size;
-        return cfg.max_clientes_por_led ? +(usados / cfg.max_clientes_por_led * 100).toFixed(1) : 0;
+        const tot = espacosTotalLed(l.codigo, cfg);
+        return tot ? +(usados / tot * 100).toFixed(1) : 0;
       });
       const media = vals.length ? +(vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(1) : 0;
       return { cidade: c.nome.toUpperCase(), id: c.id, valor: media };
@@ -560,7 +576,7 @@ app.get('/api/dashboard', authOpcional, (req, res) => {
     gantt_por_led: leds.map((l) => ({
       ...l,
       espacos_usados: new Set(comSt.filter((c) => c.led_codigo === l.codigo && c.fim >= R.hojeISO()).map((c) => c.anunciante)).size,
-      espacos_total: cfg.max_clientes_por_led,
+      espacos_total: espacosTotalLed(l.codigo, cfg),
       campanhas: comSt.filter((c) => c.led_codigo === l.codigo).map((c) => ({
         ...c, reservas: reservasDaCampanha(c.id, c.anunciante),
       })),

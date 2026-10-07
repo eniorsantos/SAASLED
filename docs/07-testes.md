@@ -24,7 +24,8 @@ $env:DB_PATH = '.\test-smoke.db'; npm test; Remove-Item .\test-smoke.db
 7. operador com flag recebe `403`;
 8. `config.max_clientes_por_led = 8`; AJU 02 lotada até 8/8 e 9º cliente `409`;
 9. CRUD de LEDs: incluir, duplicado `409`, renomear, exclusão com campanhas
-   `409`, exclusão de vazio `200`; `GET /api/leds` expõe `espacos_usados/total`;
+    `409`, exclusão de vazio `200`; `GET /api/leds` expõe `espacos_usados/total`;
+    espaços individuais: total 2 no LED, 3º cliente `409 {2,2}`, volta ao padrão;
 10. dashboard separa `a_vencer_lista` (só vencimento) de `a_iniciar_lista`
     (Rede Primavera em iniciar);
 11. importação: 2 válidas + 2 reservas (rotação) criadas; 3 ignoradas

@@ -115,6 +115,24 @@ const server = app.listen(0, async () => {
     const leds = await get('/api/leds');
     const aju01 = leds.find((l) => l.codigo === 'AJU 01');
     assert.ok(aju01 && aju01.espacos_total === 8 && aju01.espacos_usados === 2, 'LED expõe x/8 espaços');
+    // espaços individuais por LED (padrão global = 8)
+    const putLed = (cod, body) => fetch(base + '/api/leds/' + encodeURIComponent(cod), {
+      method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + login.token },
+      body: JSON.stringify(body),
+    }).then(async (r) => ({ status: r.status, json: await r.json().catch(() => ({})) }));
+    assert.equal((await ledPost({ codigo: 'TST E1', endereco: 'Rua E', cidade_id: 'salvador' })).status, 201, 'LED p/ teste de espaços');
+    assert.equal((await putLed('TST E1', { espacos_total: 0 })).status, 400, 'total inválido rejeitado');
+    assert.equal((await putLed('TST E1', { espacos_total: 2 })).status, 200, 'total individual definido');
+    assert.equal((await get('/api/leds')).find((l) => l.codigo === 'TST E1').espacos_total, 2, 'GET reflete o total');
+    for (const [cid, anu] of [['cap-e1', 'E1'], ['cap-e2', 'E2']])
+      assert.equal((await postCamp({ id: cid, cidade_id: 'salvador', led_codigo: 'TST E1', anunciante: anu, inicio: '2026-11-01', fim: '2026-12-01' })).status, 201, 'cabe em 2 espaços');
+    const lot2 = await postCamp({ id: 'cap-e3', cidade_id: 'salvador', led_codigo: 'TST E1', anunciante: 'E3', inicio: '2026-11-01', fim: '2026-12-01' });
+    assert.equal(lot2.status, 409, '3º cliente rejeitado no LED de 2');
+    assert.deepEqual(lot2.json.espacos, { usados: 2, total: 2 }, 'lotação individual no erro');
+    assert.equal((await putLed('TST E1', { espacos_total: null })).status, 200, 'volta ao padrão global');
+    for (const cid of ['cap-e1', 'cap-e2'])
+      await fetch(base + '/api/campanhas/' + cid, { method: 'DELETE', headers: { Authorization: 'Bearer ' + login.token } });
+    assert.equal((await fetch(base + '/api/leds/TST%20E1', { method: 'DELETE', headers: { Authorization: 'Bearer ' + login.token } })).status, 200, 'limpeza LED espaços');
     // CRUD de cidades (id, nome, UF, fuso)
     const cidPost = (b) => fetch(base + '/api/cidades', {
       method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + login.token },

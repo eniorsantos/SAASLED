@@ -32,9 +32,9 @@ Legenda de auth: 🔓 pública · 🔑 login · ✏️ admin/regional/operador �
 | GET/POST | `/api/cidades` | 🔓/`cidades` | POST: `{id, nome, uf?, fuso?}`; 409 id duplicado |
 | PUT | `/api/cidades/:id` | `cidades` | `{nome?, uf?, fuso?}` (id não renomeia) |
 | DELETE | `/api/cidades/:id` | `cidades` | 409 se houver LEDs; limpa vínculos |
-| GET | `/api/leds?cidade=` | 🔓 (+escopo) | cada LED traz `espacos_usados/espacos_total` (8 por padrão) |
-| POST | `/api/leds` | `leds` | `{codigo, endereco, cidade_id}`; 400 cidade inexistente · 409 código duplicado |
-| PUT | `/api/leds/:codigo` | `leds` | `{endereco?, cidade_id?, novo_codigo?}`; renomear move campanhas+spots (transação) |
+| GET | `/api/leds?cidade=` | 🔓 (+escopo) | cada LED traz `espacos_usados/espacos_total` (individual ou padrão) + `espacos_proprio` (nulo = padrão) |
+| POST | `/api/leds` | `leds` | `{codigo, endereco, cidade_id, espacos_total?}` (vazio = padrão); 400 cidade inexistente · 409 código duplicado |
+| PUT | `/api/leds/:codigo` | `leds` | `{endereco?, cidade_id?, novo_codigo?, espacos_total?}`; renomear move campanhas+spots (transação) |
 | DELETE | `/api/leds/:codigo` | `leds` | 409 se houver campanhas; 404 se inexistente |
 | GET | `/api/anunciantes` | 🔓 | — |
 

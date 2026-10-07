@@ -334,3 +334,7 @@ pm run dev falhava com Failed to load PostCSS config ... Unexpected token: ediç
 ## Reserva com escolha de LED
 
 - POST /api/reservas (LED + anunciante + período; cria campanha reservada se faltar, com lotação); formulário com LED filtrando campanhas + modo automático.
+
+## Espaços por LED individual
+
+- leds.espacos_total (nulo = padrão global); capacidade, KPIs, rosca e ocupação usam o total individual; menu com campo Espaços; espacos_proprio no GET.

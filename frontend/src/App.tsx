@@ -137,7 +137,7 @@ export default function App() {
   const [resEditM, setResEditM] = useState<{ id: string; campLabel: string; anunciante: string; inicio: string; fim: string } | null>(null);
   const [resMsgM, setResMsgM] = useState<{ tipo: 'ok' | 'erro'; texto: string } | null>(null);
   const [resMsgG, setResMsgG] = useState<{ tipo: 'ok' | 'erro'; texto: string } | null>(null);
-  const [ledForm, setLedForm] = useState({ codigo: '', endereco: '', cidade_id: 'aracaju' });
+  const [ledForm, setLedForm] = useState({ codigo: '', endereco: '', cidade_id: 'aracaju', espacos: '' });
   const [ledEditando, setLedEditando] = useState<string | null>(null);
   const [ledMsg, setLedMsg] = useState<{ tipo: 'ok' | 'erro'; texto: string } | null>(null);
   // Tema (paleta configurável): lido da API e aplicado nas variáveis CSS
@@ -781,26 +781,31 @@ export default function App() {
     } catch (e: any) { setTemaMsg({ tipo: 'erro', texto: e.message }); }
   };
 
-  // Menu de LEDs: incluir / editar / excluir
+  // Menu de LEDs: incluir / editar / excluir (com total de espaços individual)
   const salvarLed = async () => {
     setLedMsg(null);
     if (!ledForm.codigo.trim() || !ledForm.endereco.trim() || !ledForm.cidade_id) {
       setLedMsg({ tipo: 'erro', texto: 'Preencha código, endereço e cidade.' });
       return;
     }
+    const esp = ledForm.espacos === '' ? null : Number(ledForm.espacos);
+    if (esp !== null && (!Number.isInteger(esp) || esp < 1)) {
+      setLedMsg({ tipo: 'erro', texto: 'Espaços deve ser inteiro ≥ 1 (ou vazio = padrão).' });
+      return;
+    }
     try {
       if (ledEditando) {
         await api.editarLed(ledEditando, {
-          endereco: ledForm.endereco, cidade_id: ledForm.cidade_id,
+          endereco: ledForm.endereco, cidade_id: ledForm.cidade_id, espacos_total: esp,
           ...(ledForm.codigo !== ledEditando ? { novo_codigo: ledForm.codigo } : {}),
         });
         setLedMsg({ tipo: 'ok', texto: 'LED atualizado.' });
       } else {
-        const { status, body } = await api.criarLed(ledForm);
+        const { status, body } = await api.criarLed({ ...ledForm, espacos_total: esp });
         if (status !== 201) { setLedMsg({ tipo: 'erro', texto: body?.erro || `Falha (HTTP ${status}).` }); return; }
-        setLedMsg({ tipo: 'ok', texto: `LED ${ledForm.codigo} cadastrado com 8 espaços.` });
+        setLedMsg({ tipo: 'ok', texto: `LED ${ledForm.codigo} cadastrado (${esp ?? 'padrão'} espaços).` });
       }
-      setLedForm({ codigo: '', endereco: '', cidade_id: ledForm.cidade_id }); setLedEditando(null);
+      setLedForm({ codigo: '', endereco: '', cidade_id: ledForm.cidade_id, espacos: '' }); setLedEditando(null);
       carregar();
     } catch (e: any) { setLedMsg({ tipo: 'erro', texto: e.message }); }
   };
@@ -1441,7 +1446,7 @@ export default function App() {
                     </td>
                     {podeEditar && (
                       <td className="row-actions">
-                        <button onClick={() => { setLedEditando(l.codigo); setLedForm({ codigo: l.codigo, endereco: l.endereco, cidade_id: l.cidade_id }); }}>Editar</button>
+                        <button onClick={() => { setLedEditando(l.codigo); setLedForm({ codigo: l.codigo, endereco: l.endereco, cidade_id: l.cidade_id, espacos: l.espacos_proprio === null || l.espacos_proprio === undefined ? '' : String(l.espacos_proprio) }); }}>Editar</button>
                         <button className="danger" onClick={() => excluirLed(l.codigo)}>Excluir</button>
                       </td>
                     )}
@@ -1453,7 +1458,7 @@ export default function App() {
             {podeEditar && (
               <div className="spot-form">
                 <h2 style={{ fontSize: '.85rem' }}>{ledEditando ? `EDITAR ${ledEditando}` : '＋ NOVO LED'}</h2>
-                <div className="spot-row">
+                <div className="spot-row" style={{ gridTemplateColumns: '1fr 1fr 1fr 1fr' }}>
                   <label>Código<input placeholder="AJU 05" value={ledForm.codigo} onChange={(e) => setLedForm({ ...ledForm, codigo: e.target.value.toUpperCase() })} /></label>
                   <label>Endereço<input placeholder="Av. ..." value={ledForm.endereco} onChange={(e) => setLedForm({ ...ledForm, endereco: e.target.value })} /></label>
                   <label>Cidade
@@ -1463,11 +1468,12 @@ export default function App() {
                       ))}
                     </select>
                   </label>
+                  <label>Espaços (vazio = padrão)<input type="number" min={1} placeholder="8" value={ledForm.espacos} onChange={(e) => setLedForm({ ...ledForm, espacos: e.target.value })} /></label>
                 </div>
                 {ledMsg && <p className={`spot-msg ${ledMsg.tipo === 'ok' ? 'ok' : 'erro'}`}>{ledMsg.texto}</p>}
                 <div className="toolbar" style={{ marginTop: 8, marginBottom: 0 }}>
                   <button onClick={salvarLed}>{ledEditando ? 'Salvar alterações' : 'Cadastrar LED'}</button>
-                  {ledEditando && <button className="ghost" onClick={() => { setLedEditando(null); setLedForm({ codigo: '', endereco: '', cidade_id: ledForm.cidade_id }); }}>Cancelar edição</button>}
+                  {ledEditando && <button className="ghost" onClick={() => { setLedEditando(null); setLedForm({ codigo: '', endereco: '', cidade_id: ledForm.cidade_id, espacos: '' }); }}>Cancelar edição</button>}
                 </div>
               </div>
             )}

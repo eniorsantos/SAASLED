@@ -16,7 +16,7 @@ ignorado pelo git — ver `.gitignore`).
 |------------------|------------------------------------------------------------------------------------------|
 | `config`         | `id=1`, `n_inicio_proximo` (7), `n_vencimento_proximo` (5), `max_clientes_por_led` (8), `logo_dataurl` (dataURL da logo) — limites editáveis pelo admin |
 | `cidades`        | `id` (ex. `aracaju`), `nome`, `uf`, `fuso` (padrão `America/Maceio`)                     |
-| `leds`           | `codigo` PK (ex. `AJU 01`), `endereco`, `cidade_id` → cada LED pertence a exatamente 1 cidade |
+| `leds`           | `codigo` PK (ex. `AJU 01`), `endereco`, `cidade_id`, `espacos_total` (individual; nulo = padrão global) → cada LED pertence a exatamente 1 cidade |
 | `anunciantes`    | `nome` PK                                                                                |
 | `campanhas`      | `id`, `cidade_id`, `led_codigo`, `anunciante`, `inicio`/`fim` (`AAAA-MM-DD`), `reservada` 0/1 |
 | `programacoes`   | `id`, `campanha_id`, `led_codigo`, `horario_inicio` (`HH:MM`), `duracao_segundos`, `dias_semana`, `insercoes_dia`, `autorizado_por`, `motivo_autorizacao` |

@@ -47,7 +47,7 @@ Abas **Dashboard (todas as linhas) / Visualizar como planilha / Relatórios (dim
 - **Menu 🏙️ Cidades** (recurso `cidades`): tabela (id, nome, UF, fuso) +
   **＋ Nova cidade**, **Editar** (id não renomeia) e **Excluir** (só vazia).
 - **Menu 📺 LEDs** (recurso `leds`): tabela de painéis com `x/8 espaços`,
-  **＋ Novo LED** (código, endereço, cidade), **Editar** (renomear move tudo
+  **＋ Novo LED** (código, endereço, cidade, espaços — vazio = padrão), **Editar** (renomear move tudo
   junto) e **Excluir** (só LED vazio).
 - **Tela Configurações** (botão topbar + Voltar; `usuarios`, `cidades`, `config` ou `importar`): troca o painel, com seções
   **Acesso**, **Cidades**, **Cores**, **Importar**, **Logo** e **Backup** (conforme permissão; sem seção permitida, volta ao painel).
