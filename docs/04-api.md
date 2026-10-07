@@ -48,6 +48,7 @@ Legenda de auth: 🔓 pública · 🔑 login · ✏️ admin/regional/operador �
 | DELETE | `/api/campanhas/:id` | `campanhas_editar` | - |
 | DELETE | `/api/campanhas` | `campanhas_editar` | lote `{ids: []}` → `{excluidas[], ignoradas[{id, motivo}]}` (escopo por item) |
 | GET | `/api/campanhas/:id/reservas` | 🔓 (+escopo: 403 fora do vínculo) | N períodos futuros (cada um com seu `anunciante`) |
+| POST | `/api/reservas` | `reservas` | `{led_codigo, anunciante, inicio, fim}`: usa campanha do LED+anunciante ou cria reservada |
 | POST | `/api/campanhas/:id/reservas` | `reservas` | `{inicio, fim, anunciante?}` (vazio = o da campanha); rotação sem choque; cada reserva notifica o início (doc 03 §3.8) |
 | GET | `/api/reservas` | 🔓 (+escopo) | menu global: `?cidades=`, `?led=`, `?campanha_id=`; cada item traz `anunciante`, `led_codigo`, `cidade_id/nome` |
 | PUT | `/api/reservas/:id` | `reservas` | `{inicio?, fim?, anunciante?}` com as mesmas validações do POST (ignorando a própria) |

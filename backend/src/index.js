@@ -358,8 +358,44 @@ app.post('/api/campanhas/:id/reservas', auth(), requer('reservas'), (req, res) =
   log(req.user.login, 'reserva.create', `${id} (${anu} ${inicio} → ${fim})`);
   res.status(201).json({ ok: true, id });
 });
+// Reserva com LED: {led_codigo, anunciante, inicio, fim} — usa campanha existente
+// do mesmo LED+anunciante ou cria uma campanha reservada automaticamente
+app.post('/api/reservas', auth(), requer('reservas'), (req, res) => {
+  const { led_codigo, inicio, fim } = req.body || {};
+  const anunciante = R.normalizarAnunciante(req.body?.anunciante);
+  if (!led_codigo || !anunciante || !inicio || !fim)
+    return res.status(400).json({ erro: 'led_codigo, anunciante, inicio e fim obrigatórios' });
+  const ledCidade = cidadeDoLed(led_codigo);
+  if (!ledCidade) return res.status(400).json({ erro: `LED "${led_codigo}" não cadastrado` });
+  if (!escopoCidadeOk(req.user, ledCidade))
+    return res.status(403).json({ erro: ERRO_ESCOPO });
+  if (!R.validarDataISO(inicio) || !R.validarDataISO(fim))
+    return res.status(400).json({ erro: 'data inválida (use AAAA-MM-DD válido)' });
+  if (inicio > fim) return res.status(400).json({ erro: 'início posterior ao fim' });
+  let camp = db.prepare('SELECT * FROM campanhas WHERE led_codigo = ? AND anunciante = ? ORDER BY inicio LIMIT 1')
+    .get(led_codigo, anunciante);
+  let campanhaCriada = null;
+  if (!camp) {
+    const cfg = R.getConfig(db);
+    const usados = R.espacosUsados(db, led_codigo, R.hojeISO());
+    if (usados.length >= cfg.max_clientes_por_led)
+      return res.status(409).json({ erro: `LED ${led_codigo} lotado (${usados.length}/${cfg.max_clientes_por_led})` });
+    campanhaCriada = `c${Date.now()}`;
+    db.prepare('INSERT OR IGNORE INTO anunciantes (nome) VALUES (?)').run(anunciante);
+    db.prepare('INSERT INTO campanhas (id,cidade_id,led_codigo,anunciante,inicio,fim,reservada) VALUES (?,?,?,?,?,?,1)')
+      .run(campanhaCriada, ledCidade, led_codigo, anunciante, inicio, fim);
+    log(req.user.login, 'campanha.create.auto', `${campanhaCriada} (${anunciante} ${led_codigo})`);
+    camp = db.prepare('SELECT * FROM campanhas WHERE id = ?').get(campanhaCriada);
+  }
+  const id = 'r' + Date.now();
+  db.prepare('INSERT INTO reservas (id,campanha_id,inicio,fim,anunciante,criada_por) VALUES (?,?,?,?,?,?)')
+    .run(id, camp.id, inicio, fim, anunciante, req.user.login);
+  log(req.user.login, 'reserva.create', `${id} (${anunciante} ${led_codigo} ${inicio} → ${fim})`);
+  res.status(201).json({ ok: true, id, campanha_id: camp.id, campanha_criada: campanhaCriada });
+});
 app.delete('/api/reservas/:id', auth(), requer('reservas'), (req, res) => {
   const r = db.prepare('SELECT * FROM reservas WHERE id = ?').get(req.params.id);
+  if (!r) return res.status(404).json({ erro: 'reserva não encontrada' });
   if (!r) return res.status(404).json({ erro: 'reserva não encontrada' });
   const camp = db.prepare('SELECT * FROM campanhas WHERE id = ?').get(r.campanha_id);
   if (camp && !escopoCidadeOk(req.user, camp.cidade_id))

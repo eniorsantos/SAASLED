@@ -92,6 +92,8 @@ export const api = {
   reservas: (campanhaId: string) => req<any[]>(`/api/campanhas/${campanhaId}/reservas`),
   criarReserva: (campanhaId: string, body: any) =>
     req(`/api/campanhas/${campanhaId}/reservas`, { method: 'POST', body: JSON.stringify(body) }),
+  criarReservaLed: (body: any) =>
+    req<{ ok: boolean; id: string; campanha_id: string; campanha_criada: string | null }>('/api/reservas', { method: 'POST', body: JSON.stringify(body) }),
   excluirReserva: (id: string) => req('/api/reservas/' + id, { method: 'DELETE' }),
   listarReservas: (cidades = '') => req<any[]>(`/api/reservas${cidades ? `?cidades=${cidades}` : ''}`),
   editarReserva: (id: string, body: any) =>

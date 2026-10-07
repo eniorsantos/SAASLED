@@ -169,6 +169,19 @@ const server = app.listen(0, async () => {
     assert.ok(nots.some((n) => n.corpo.includes('Reserva de Parceiro X')), 'toast usa o anunciante da reserva');
     for (const id of [rA.json.id, rB.json.id, rC.json.id, rD.json.id])
       assert.equal((await fetch(base + '/api/reservas/' + id, { method: 'DELETE', headers: { Authorization: 'Bearer ' + login.token } })).status, 200, 'reserva excluída');
+    // reserva com LED: cria campanha reservada automaticamente quando não há
+    const rLed = await (await fetch(base + '/api/reservas', { method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + login.token },
+      body: JSON.stringify({ led_codigo: 'AJU 03', anunciante: 'Novo Led', inicio: '2026-12-01', fim: '2026-12-15' }) })).json();
+    assert.ok(rLed.id && rLed.campanha_criada, 'reserva com LED cria campanha');
+    const rLed2 = await (await fetch(base + '/api/reservas', { method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + login.token },
+      body: JSON.stringify({ led_codigo: 'AJU 03', anunciante: 'Novo Led', inicio: '2026-12-16', fim: '2026-12-20' }) })).json();
+    assert.ok(rLed2.id && !rLed2.campanha_criada && rLed2.campanha_id === rLed.campanha_id, 'reusa campanha existente');
+    assert.equal((await (await fetch(base + '/api/reservas', { method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + login.token },
+      body: JSON.stringify({ led_codigo: 'XXX', anunciante: 'Y', inicio: '2026-12-01', fim: '2026-12-02' }) })).status), 400, 'LED inexistente rejeitado');
+    await fetch(base + '/api/campanhas/' + rLed.campanha_id, { method: 'DELETE', headers: { Authorization: 'Bearer ' + login.token } });
     // FK: anunciante novo no PUT (campanha e reserva) + campanha inexistente no spot
     assert.equal((await fetch(base + '/api/campanhas/cap-g1', { method: 'PUT',
       headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + login.token },

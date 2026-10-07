@@ -132,7 +132,7 @@ export default function App() {
   // Menu global de cadastro de reservas (padrão LEDs/Usuários)
   const [resListaG, setResListaG] = useState<any[]>([]);
   const [resCamps, setResCamps] = useState<any[]>([]);
-  const [resFormG, setResFormG] = useState({ campanha_id: '', anunciante: '', inicio: '2026-12-01', fim: '2026-12-31' });
+  const [resFormG, setResFormG] = useState({ campanha_id: '', led_codigo: '', anunciante: '', inicio: '2026-12-01', fim: '2026-12-31' });
   // Janela independente de edição de reserva (a criação fica no formulário)
   const [resEditM, setResEditM] = useState<{ id: string; campLabel: string; anunciante: string; inicio: string; fim: string } | null>(null);
   const [resMsgM, setResMsgM] = useState<{ tipo: 'ok' | 'erro'; texto: string } | null>(null);
@@ -467,11 +467,11 @@ export default function App() {
   };
 
   // Aba de reservas: carrega lista global + campanhas ao abrir
+  // (campanha vazia = automática; LED mantém o escolhido)
   const carregarAbaReservas = useCallback(async () => {
     try {
       const [lista, camps] = await Promise.all([api.listarReservas(cidade), api.campanhas()]);
       setResListaG(lista); setResCamps(camps);
-      if (camps.length) setResFormG((f) => (f.campanha_id ? f : { ...f, campanha_id: camps[0].id }));
     } catch (e: any) { setResMsgG({ tipo: 'erro', texto: e.message }); }
   }, [cidade]);
   useEffect(() => {
@@ -561,13 +561,22 @@ export default function App() {
       </div>
       <div className="spot-form">
         <h2 style={{ fontSize: '.85rem' }}>＋ NOVA RESERVA</h2>
-        <label>Campanha
-          <select value={resFormG.campanha_id} onChange={(e) => setResFormG({ ...resFormG, campanha_id: e.target.value })}>
-            {resCamps.map((c: any) => (
-              <option key={c.id} value={c.id}>{c.anunciante} · {c.led_codigo} ({br(c.inicio)}→{br(c.fim)})</option>
-            ))}
-          </select>
-        </label>
+        <div className="spot-row" style={{ gridTemplateColumns: '1fr 1fr' }}>
+          <label>LED a reservar
+            <select value={resFormG.led_codigo} onChange={(e) => setResFormG({ ...resFormG, led_codigo: e.target.value, campanha_id: '' })}>
+              <option value="">— escolher LED —</option>
+              {(ledsLista.length ? ledsLista : dash.gantt_por_led).map((l: any) => <option key={l.codigo} value={l.codigo}>{l.codigo}</option>)}
+            </select>
+          </label>
+          <label>Campanha (vazio = automática: cria reservada se faltar)
+            <select value={resFormG.campanha_id} onChange={(e) => setResFormG({ ...resFormG, campanha_id: e.target.value })}>
+              <option value="">— automática —</option>
+              {resCamps.filter((c: any) => !resFormG.led_codigo || c.led_codigo === resFormG.led_codigo).map((c: any) => (
+                <option key={c.id} value={c.id}>{c.anunciante} · {c.led_codigo} ({br(c.inicio)}→{br(c.fim)})</option>
+              ))}
+            </select>
+          </label>
+        </div>
         <div className="spot-row" style={{ gridTemplateColumns: '1fr 1fr 1fr' }}>
           <label>Anunciante (vazio = o da campanha)<input value={resFormG.anunciante} onChange={(e) => setResFormG({ ...resFormG, anunciante: e.target.value })} /></label>
           <label>Início<input type="date" value={resFormG.inicio} onChange={(e) => setResFormG({ ...resFormG, inicio: e.target.value })} /></label>
@@ -608,15 +617,25 @@ export default function App() {
   };
   const salvarReservaGlobal = async () => {
     setResMsgG(null);
-    if (!resFormG.campanha_id || !resFormG.inicio || !resFormG.fim) {
-      setResMsgG({ tipo: 'erro', texto: 'Escolha a campanha e o período.' });
+    if (!resFormG.inicio || !resFormG.fim) {
+      setResMsgG({ tipo: 'erro', texto: 'Informe o período.' });
       return;
     }
     try {
-      await api.criarReserva(resFormG.campanha_id, resFormG);
-      setResFormG({ campanha_id: resFormG.campanha_id, anunciante: '', inicio: '2026-12-01', fim: '2026-12-31' });
+      let msg: string | null = null;
+      if (resFormG.campanha_id) {
+        await api.criarReserva(resFormG.campanha_id, resFormG);
+      } else {
+        if (!resFormG.led_codigo || !resFormG.anunciante.trim()) {
+          setResMsgG({ tipo: 'erro', texto: 'Escolha o LED e o anunciante (ou uma campanha).' });
+          return;
+        }
+        const r = await api.criarReservaLed({ led_codigo: resFormG.led_codigo, anunciante: resFormG.anunciante, inicio: resFormG.inicio, fim: resFormG.fim });
+        if (r.campanha_criada) msg = 'Reserva salva (campanha reservada criada) — avisaremos o início.';
+      }
+      setResFormG({ campanha_id: '', led_codigo: resFormG.led_codigo, anunciante: '', inicio: '2026-12-01', fim: '2026-12-31' });
       setResListaG(await api.listarReservas(cidade));
-      setResMsgG({ tipo: 'ok', texto: 'Reserva salva — avisaremos o início próximo.' });
+      setResMsgG({ tipo: 'ok', texto: msg || 'Reserva salva — avisaremos o início próximo.' });
       carregar();
     } catch (e: any) { setResMsgG({ tipo: 'erro', texto: e.message }); }
   };

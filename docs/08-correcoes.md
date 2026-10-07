@@ -330,3 +330,7 @@ pm run dev falhava com Failed to load PostCSS config ... Unexpected token: ediç
 ## Backup do banco na Configuração
 
 - GET /api/backup (download JSON) + POST /api/backup/restaurar (valida e substitui em transação, com auditoria); seção Backup (recurso config); smoke com roundtrip.
+
+## Reserva com escolha de LED
+
+- POST /api/reservas (LED + anunciante + período; cria campanha reservada se faltar, com lotação); formulário com LED filtrando campanhas + modo automático.
