@@ -1,0 +1,34 @@
+# Override de produção: HTTPS automático via Caddy + sem expor portas internas.
+# Uso: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+# Requer DNS do DOMINIO apontando para o host.
+services:
+  web:
+    ports: []
+    expose:
+      - "80"
+
+  api:
+    expose:
+      - "3001"
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: saasled-caddy
+    restart: unless-stopped
+    depends_on:
+      - web
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    environment:
+      DOMINIO: ${DOMINIO:?defina DOMINIO no .env para produção}
+
+volumes:
+  caddy-data:
+    name: saasled-caddy-data
+  caddy-config:
+    name: saasled-caddy-config

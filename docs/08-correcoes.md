@@ -342,3 +342,7 @@ pm run dev falhava com Failed to load PostCSS config ... Unexpected token: ediç
 ## Containerização em pasta nova
 
 - docker/ com Dockerfiles (API Node 22 + painel Nginx), compose (volume SQLite, healthcheck, proxy), .env.example, .dockerignore e README; .env no .gitignore. Compose validado (config); build exige daemon.
+
+## Roteiro Docker dedicado
+
+- docs/10-implantacao-docker.md (local, VPS, Render, Railway, HTTPS) + docker-compose.prod.yml com Caddy (corrigido {env.DOMINIO}); YAMLs validados via compose config.

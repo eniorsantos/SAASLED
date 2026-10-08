@@ -63,3 +63,4 @@ Sem API no ar, o painel mostra telas vazias com aviso (badge `OFFLINE`).
 | [07 — Testes](docs/07-testes.md) | smoke (14 itens), checks, evoluções sugeridas |
 | [08 — Correções](docs/08-correcoes.md) | histórico: features + debugs por rodada |
 | [09 — Implantação](docs/09-implantacao.md) | passo a passo local (Windows) e nuvem (Render, VPS+Nginx+PM2, Vercel) |
+| [10 — Implantação Docker](docs/10-implantacao-docker.md) | roteiro local e nuvem só com Docker (Compose, HTTPS, Render, Railway) |
