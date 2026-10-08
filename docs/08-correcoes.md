@@ -346,3 +346,8 @@ pm run dev falhava com Failed to load PostCSS config ... Unexpected token: ediç
 ## Roteiro Docker dedicado
 
 - docs/10-implantacao-docker.md (local, VPS, Render, Railway, HTTPS) + docker-compose.prod.yml com Caddy (corrigido {env.DOMINIO}); YAMLs validados via compose config.
+
+## Docker em dia
+
+- pdfkit/xlsx já entram via 
+pm ci (prod); web aguarda API saudável (service_healthy); YAMLs revalidados.
