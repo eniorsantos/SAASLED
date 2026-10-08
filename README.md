@@ -27,7 +27,7 @@ nas cores/elementos de `mockup-led-saas`.
 - Cada LED tem **8 espaços de cliente** (anunciantes distintos não-vencidos;
   `max_clientes_por_led` configurável pelo admin). O 9º é rejeitado com `409`.
 - Menu **📺 LEDs**: incluir, editar (renomear move tudo junto), excluir (só LED
-  vazio) — selo `x/8` por painel; Gantt com o nome dos clientes veiculando.
+  vazio) — selo `x/8` por painel; Gantt com o nome de todas as campanhas.
 - Menu **🗓️ Reservas** (janela como o cadastro de LEDs + **aba Reservas**,
   independentes): múltiplos períodos futuros por campanha, cada um com seu
   anunciante e toast de início próximo.

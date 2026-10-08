@@ -7,7 +7,7 @@ são públicas; com token **não-admin**, o filtro é intersectado com as cidade
 vinculadas (doc 06).
 
 Legenda de auth: 🔓 pública · 🔑 login · ✏️ admin/regional/operador ·
-`` `recurso` `` exige o recurso · 👑 só admin.
+`recurso` exige o recurso · 👑 só admin.
 
 ## Auth / config / saúde
 
@@ -43,7 +43,7 @@ Legenda de auth: 🔓 pública · 🔑 login · ✏️ admin/regional/operador �
 | Método | Rota | Auth | Detalhes |
 |--------|------|------|----------|
 | GET | `/api/campanhas` | 🔓 (+escopo) | `?cidades=a,b` (aceita legado `?cidade=`), `?led=`, `?status=`; cada item traz `status` calculado |
-| POST | `/api/campanhas` | `campanhas_editar` | `{id, cidade_id, led_codigo, anunciante, inicio, fim, reservada?}`; 400 p/ data inválida, `inicio>fim`, LED inexistente ou cidade≠cidade do LED · **409 LED lotado** (`{usados,total}`, 8 espaços) · 403 fora do escopo |
+| POST | `/api/campanhas` | `campanhas_editar` | `{id, cidade_id, led_codigo, anunciante, inicio, fim, reservada?}`; 400 p/ data inválida, `inicio>fim`, LED inexistente ou cidade≠cidade do LED · **409 LED lotado** (`{usados,total}`, total individual ou padrão) · 403 fora do escopo |
 | PUT | `/api/campanhas/:id` | `campanhas_editar` | edição parcial (usada pelo inline da planilha); troca de LED/anunciante revalida a lotação (ignorando a própria campanha) |
 | DELETE | `/api/campanhas/:id` | `campanhas_editar` | - |
 | DELETE | `/api/campanhas` | `campanhas_editar` | lote `{ids: []}` → `{excluidas[], ignoradas[{id, motivo}]}` (escopo por item) |
@@ -59,13 +59,13 @@ Legenda de auth: 🔓 pública · 🔑 login · ✏️ admin/regional/operador �
 | Método | Rota | Auth | Detalhes |
 |--------|------|------|----------|
 | GET | `/api/programacoes` | 🔓 (+escopo) | `?led=` e/ou `?campanha=` |
-| POST | `/api/programacoes` | ✏️ | `{id, campanha_id, led_codigo, horario_inicio, duracao_segundos?, dias_semana?, insercoes_dia?, autorizacao_admin?, motivo_autorizacao?}`; 400 validação · 403 choque sem poder de admin · 409 choque aguardando confirmação admin (`requer_autorizacao_admin: true` + `choque`) · 201 `{ok, id, autorizada_por?}` |
+| POST | `/api/programacoes` | ✏️ (perfis editores) | `{id, campanha_id (validada), led_codigo, horario_inicio, duracao_segundos?, dias_semana?, insercoes_dia?, autorizacao_admin?, motivo_autorizacao?}`; 400 validação (inclui LED/campanha e escopo) · 403 choque sem poder de admin · 409 choque aguardando confirmação admin (`requer_autorizacao_admin: true` + `choque`) · 201 `{ok, id, autorizada_por?}` |
 
 ## Dashboard / planilha / exportação (§8.2, §4.4, §8.3)
 
 | Método | Rota | Auth | Resposta |
 |--------|------|------|----------|
-| GET | `/api/dashboard?cidades=` | 🔓 (+escopo) | `{hoje, periodo, kpis{...}, distribuicao[3] (slots), evolucao_mensal[6], ocupacao_por_cidade[] (inventario), gantt_por_led[] (espacos + `reservas[]`), a_vencer_lista[] (janela 0-7d, sem corte, com `dias`), a_iniciar_lista[] (`agendada` + reservas, com `dias`)}` |
+| GET | `/api/dashboard?cidades=` | 🔓 (+escopo) | `{hoje, periodo, kpis{ocupacao_media, leds_ativos x/y, a_vencer_7d (LEDs distintos), livres/total}, distribuicao[3] (slots), evolucao_mensal[6], ocupacao_por_cidade[] (inventario), gantt_por_led[] (espacos + `reservas[]`), a_vencer_lista[] (janela 0-7d, sem corte, com `dias`), a_iniciar_lista[] (`agendada` + reservas, com `dias`)}` |
 | GET | `/api/planilha?cidades=&status=&q=` | 🔓 (+escopo) | `[{id, cidade, led, anunciante, inicio, fim, status}]` |
 | GET | `/api/export/planilha.csv?...` | `exportar` | mesmos filtros da planilha (+`?token=`); `;`-separado com BOM |
 | GET | `/api/export/planilha.xlsx?...` | `exportar` | mesmos filtros (+`?token=`); aba `Veiculação` |
@@ -87,16 +87,16 @@ Legenda de auth: 🔓 pública · 🔑 login · ✏️ admin/regional/operador �
 | Método | Rota | Auth | Detalhes |
 |--------|------|------|----------|
 | GET | `/api/me` | 🔑 | `{login, perfil, nome, cidades[], permissoes[] (extras), efetivas[]}` — o front usa para exibir/esconder módulos |
-| GET | `/api/recursos` | 🔑 | catálogo `{id, rotulo}` (12: dashboard, planilha, graficos, leds, cidades, campanhas_editar, reservas, importar, exportar, notificacoes, usuarios, config) |
+| GET | `/api/recursos` | 🔑 | catálogo `{id, rotulo}` (13 recursos, inclui `relatorios`) |
 | GET | `/api/usuarios` | `usuarios` | lista com cidades + permissões + efetivas |
 | POST | `/api/usuarios` | `usuarios` | `{login, senha, perfil?, nome?, cidades[]?, permissoes[]?}`; 409 login duplicado |
 | PUT | `/api/usuarios/:login` | `usuarios` | senha (vazio mantém), perfil, nome, `cidades[]` e `permissoes[]` substituem; 409 ao rebaixar o último admin |
 | DELETE | `/api/usuarios/:login` | `usuarios` | 409 p/ próprio login ou último admin |
 
-Escritas exigem o recurso: campanhas→`campanhas_editar`, LEDs→`leds`,
-reservas→`reservas`, import→`importar`, export→`exportar` (link leva `?token=`),
-config→`config`, usuários→`usuarios` (programações e cidades seguem perfis
-editores). Leituras de escopo intersectam o filtro com as cidades vinculadas
+Escritas exigem o recurso: campanhas→`campanhas_editar`, LEDs→`leds`, cidades→`cidades`,
+reservas→`reservas`, relatorios→`relatorios`, import→`importar`, export→`exportar` (link leva `?token=`),
+config→`config` (limites, tema, logo, backup), usuários→`usuarios` (programações seguem perfis editores).
+Leituras de escopo intersectam o filtro com as cidades vinculadas
 (não-admin sem vínculo = todas).
 
 Exemplo:

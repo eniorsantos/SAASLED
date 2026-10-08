@@ -1,4 +1,4 @@
-# 02 — Modelo de dados (spec §2 + §9)
+﻿# 02 — Modelo de dados (spec §2 + §9)
 
 ```text
 CIDADE 1──N LED 1──N CAMPANHA N──1 ANUNCIANTE
@@ -44,10 +44,9 @@ SEED parcial), cria-se o admin de resgate `admin/admin123`. Seed idempotente
 
 ## Migrações
 
-`db.js` no boot: `ALTER TABLE` para `programacoes.autorizado_por`/
-`motivo_autorizacao`, `config.max_clientes_por_led` e `reservas.anunciante`
-quando ausentes, além de seed aditivo da reserva-exemplo `r1` — bancos criados
-antes dessas features continuam funcionando.
+`db.js` no boot: `ALTER TABLE` para `programacoes.autorizado_por`/`motivo_autorizacao`, `config.max_clientes_por_led`, `config.logo_dataurl`,
+`reservas.anunciante`, `leds.espacos_total` e `notificacoes.cidade_id` quando ausentes, além de seed aditivo da reserva-exemplo `r1` —
+bancos criados antes dessas features continuam funcionando.
 
 ## Validações de escrita
 
