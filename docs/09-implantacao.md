@@ -295,6 +295,18 @@ Agende o backup com cron diário e copie para fora do servidor (`scp`/S3).
 3. Env **`VITE_API_URL=https://<sua-api>`** (Render B.1 ou VPS B.2) → Deploy.
 4. A API continua num dos caminhos acima (a Vercel não roda o Express).
 
+## B.3.5 Caminho 3.5 — Supabase (banco PostgreSQL gerenciado na nuvem)
+
+Substitui o SQLite local por um banco PostgreSQL gerenciado no Supabase, removendo a dependência de disco persistente para o `data.db`.
+
+1. Crie um projeto em https://supabase.com e anote a **Connection String** (pooler ou direta) e a `JWT_SECRET`.
+2. No back-end, defina `DB_URL` (ou `DATABASE_URL`) com a string de conexão do Supabase.
+3. Ajuste `backend/src/db.js` para usar `pg` (ou `better-sqlite3` via adaptador) apontando para o Supabase; execute as migrações/schema (`CREATE TABLE ...`) uma vez no banco remoto.
+4. Defina `VITE_API_URL` apontando para a URL pública da API (Render/VPS/Railway) no front.
+5. Faça deploy da API em qualquer caminho de nuvem (B.1, B.2 ou B.3) com as variáveis `DB_URL` e `JWT_SECRET` configuradas.
+
+> O Supabase hospeda apenas o banco; a API Express continua rodando separadamente. O backup continua sendo feito pela tela Configuração (exportação JSON) ou via `pg_dump` do Supabase.
+
 ## B.4 Endurecimento de produção (checklist)
 
 - [ ] `JWT_SECRET` ≥ 32 bytes, único por ambiente, fora do repo.
