@@ -26,6 +26,7 @@ ignorado pelo git — ver `.gitignore`).
 | `permissoes`     | `login` + `recurso` (extras além do padrão do perfil; efetivas = padrão ∪ extras)      |
 | `notificacoes`   | `campanha_id` (id de campanha, de reserva ou `grupo:<evento>:<anunciante>:<data>`), `evento` (`vencimento`/`inicio`), `titulo`, `corpo`, `dia`, `lida`, `cidade_id` (escopo da central), `criada_em` — UNIQUE (`campanha_id`,`evento`,`dia`) = anti-duplicidade §4.1 |
 | `auditoria`      | `quando`, `quem`, `oque`, `detalhe` — quem/o quê/quando §9.2                             |
+| `tema`           | `id=1`, `vars` (JSON das 11 variáveis de cor da paleta) — paleta configurável pelo admin |
 
 ## Seed (dataset demo, opt-in)
 

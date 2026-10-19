@@ -126,7 +126,6 @@ convivem com o período da campanha e entre si (sem validação de choque). Cada
 `0 ≤ inicio−hoje ≤ N_início` gera **seu próprio toast** `🔔 Reserva próxima`
 na varredura (dedupe por reserva/dia via id da reserva); reservas próximas
 também entram em `a_iniciar_lista` do dashboard.
-
 ## 3.9 Relatórios PDF
 
-POST /api/relatorios/pdf (recurso elatorios): dimensão LED/cidade/cliente + filtros de cidade, status (vários), cliente e período; agrupa e gera o PDF no back-end (pdfkit), respeitando o escopo de cidades do solicitante.
+POST /api/relatorios/pdf (recurso `relatorios`): dimensão LED/cidade/cliente + filtros de cidade, status (vários), cliente e período; agrupa e gera o PDF no back-end (pdfkit), respeitando o escopo de cidades do solicitante.

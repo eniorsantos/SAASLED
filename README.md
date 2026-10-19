@@ -47,7 +47,8 @@ cd backend; npm install; npm start      # API
 cd frontend; npm install; npm run dev   # painel
 ```
 
-Login demo: `admin/admin123` (admin), `viewer/view123` (somente leitura).
+Login demo: `admin/admin123` (admin), `regional/reg123` (regional),
+`operador/op123` (operador), `viewer/view123` (somente leitura).
 Sem API no ar, o painel mostra telas vazias com aviso (badge `OFFLINE`).
 
 ## Documentação (`docs/`)

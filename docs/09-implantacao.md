@@ -82,9 +82,9 @@ PS> npm start
 ```
 
 `HOJE` permite simular outras datas (ex.: `2026-11-20` para ver vencimentos
-mudarem). Em produção, **remova `HOJE`**? Não — o código usa o padrão
-`2026-10-25` quando ausente. Para operar com a data real, ajuste
-`hojeISO()` em `backend/src/regras.js` para `new Date().toISOString().slice(0,10)`.
+mudarem). Em produção, não defina `HOJE` — o padrão de `hojeISO()` é a **data
+real** local do servidor. Defina `HOJE` apenas para simular outra data em
+testes.
 
 ## A.3 Subir o front-end (etapas)
 
@@ -236,8 +236,9 @@ $ pm2 logs led-api   # conferir "CONTROLE DE LED API on http://localhost:3001"
 $ curl localhost:3001/api/health
 ```
 
-> `HOJE=''` força string vazia? Não — o código usa o padrão quando ausente.
-> Para data real, edite `hojeISO()` (doc 01) e faça `pm2 restart led-api --update-env`.
+> `HOJE` não definido (ou vazio) força a data real local do servidor. Para
+> simular outra data, defina `HOJE=YYYY-MM-DD` e reinicie com
+> `pm2 restart led-api --update-env`.
 
 **Etapa 5 — Nginx (painel estático + proxy da API no mesmo domínio — evita CORS):**
 

@@ -22,7 +22,7 @@ clique na linha do Gantt seleciona o LED e libera "+ Nova campanha".
 ## Cards (iguais ao mockup)
 
 Topbar (brand, LIVE, 4 KPIs, filtro, período, botões **📺 LEDs**, **🗓️ Reservas**,
-**🏙️ Cidades**, **👥 Usuários**, sininho, perfil/sair — cada um só com o recurso) ·
+**⚙️ Configuração**, sininho, perfil/sair — cada um só com o recurso) ·
 Ocupação por LED (Gantt com **um bloco por campanha, com o nome** — veiculando
 em teal, `RESERVADA · NOME` em roxo, `ENCERRADA · NOME` apagado — e LIVRE só no
 restante; tooltip com período e status; **selo `x/8 espaços`** por painel) ·

@@ -111,25 +111,25 @@ regional-vazio e CSV filtrado OK.
 
 ## Reservas multiplas por campanha
 
-- **Back**: tabela eservas (cascade) + seed 1; GET|POST /api/campanhas/:id/reservas, DELETE /api/reservas/:id (409 em interseccao com a campanha ou entre reservas); varredura gera 1 toast Reserva proxima por reserva (dedupe pelo id); _iniciar_lista inclui reservas proximas; Gantt anexa eservas por campanha.
+- **Back**: tabela reservas (cascade) + seed 1; GET|POST /api/campanhas/:id/reservas, DELETE /api/reservas/:id (409 em interseccao com a campanha ou entre reservas); varredura gera 1 toast Reserva proxima por reserva (dedupe pelo id); a_iniciar_lista inclui reservas proximas; Gantt anexa reservas por campanha.
 - **Front**: botao **Reservas** na planilha + modal (lista, adicionar, excluir).
 - **Smoke**: 2 criadas, 2 rejeitadas (409), toast verificado, exclusoes OK.
 
 ## Modelo de importacao com reservas multiplas
 
 - **Modelo**: GET /api/import/modelo.csv agora traz Reserva1_Inicio/Reserva1_Fim ... Reserva3_Inicio/Reserva3_Fim com exemplo preenchido.
-- **Importador**: colunas ReservaN_* detectadas por padrao (sem acento, tolera espacos), cada par validado como na secao 3.8 (conflito vira item ignorado sem abortar a campanha); resposta com eservas_criadas; front exibe (+N reserva(s)).
+- **Importador**: colunas ReservaN_* detectadas por padrao (sem acento, tolera espacos), cada par validado como na secao 3.8 (conflito vira item ignorado sem abortar a campanha); resposta com reservas_criadas; front exibe (+N reserva(s)).
 - **Smoke**: 1 reserva criada + 1 reserva sobreposta ignorada (total 4 ignoradas).
 
 ## Anunciante proprio por reserva
 
-- **Back**: eservas.anunciante (migracao; vazio = o da campanha) + seed; POST aceita nunciante (cria o anunciante se novo); toasts, A INICIAR e GET usam o da reserva; import com ReservaN_Anunciante (default = o da linha).
+- **Back**: reservas.anunciante (migracao; vazio = o da campanha) + seed; POST aceita anunciante (cria o anunciante se novo); toasts, A INICIAR e GET usam o da reserva; import com ReservaN_Anunciante (default = o da linha).
 - **Front**: modal com coluna Anunciante + campo (placeholder = campanha).
 - **Smoke**: reserva com anunciante proprio + toast Reserva de Parceiro X; import com Imp Parceiro verificado no GET.
 
 ## Menu de cadastro de reservas
 
-- **Back**: recurso eservas (admin/regional/operador por padrao); GET /api/reservas global com ?cidades=&led=&campanha_id= e escopo por vinculo; PUT /api/reservas/:id com validacoes; endpoints de reserva migrados de campanhas_editar para eservas; seed aditivo de 1 (bancos antigos ganham o exemplo).
+- **Back**: recurso reservas (admin/regional/operador por padrao); GET /api/reservas global com ?cidades=&led=&campanha_id= e escopo por vinculo; PUT /api/reservas/:id com validacoes; endpoints de reserva migrados de campanhas_editar para reservas; seed aditivo de 1 (bancos antigos ganham o exemplo).
 - **Front**: botao topbar Reservas + modal CADASTRO DE RESERVAS (tabela global, criar, editar, excluir) no padrao LEDs/Usuarios.
 - **Smoke**: item 15 (menu + PUT + 403 de viewer).
 
