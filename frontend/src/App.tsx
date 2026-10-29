@@ -41,7 +41,8 @@ function ToastItem({ n, onView, onClose }: { n: Notif; onView: () => void; onClo
 
 export default function App() {
   const [token, setToken] = useState(() => localStorage.getItem('led_token') || '')
-  const [perfil, setPerfil] = useState(() => localStorage.getItem('led_perfil') || '');
+  const [perfil, setPerfil] = useState(() => localStorage.getItem('led_perfil') || '')
+  const [logando, setLogando] = useState(false);
   const isAdmin = perfil === 'admin';
   const [login, setLogin] = useState('admin');
   const [senha, setSenha] = useState('admin123');
@@ -326,13 +327,16 @@ export default function App() {
   };
 
   const fazerLogin = async () => {
+    setLogando(true)
+    setLoginErro('')
     try {
       const r = await api.login(login, senha);
       localStorage.setItem('led_token', r.token); localStorage.setItem('led_perfil', r.perfil);
-      setToken(r.token); setPerfil(r.perfil); setLoginErro(''); setDismissed([]); carregar();
+      setToken(r.token); setPerfil(r.perfil); setDismissed([]); carregar();
       if (localStorage.getItem('led_onboarding') !== '1') setOnboarding(true);
     }
     catch { setLoginErro('Login inválido — use admin/admin123 (demo). Entrando offline…'); setToken('offline'); }
+    finally { setLogando(false) }
   };
   const sair = () => { localStorage.removeItem('led_token'); localStorage.removeItem('led_perfil'); setToken(''); setPerfil(''); };
 
@@ -851,8 +855,8 @@ export default function App() {
           <input id="login-input" value={login} onChange={(e) => setLogin(e.target.value)} placeholder="login" aria-describedby={loginErro ? 'login-erro' : undefined} />
           <label htmlFor="senha-input">Senha</label>
           <input id="senha-input" type="password" value={senha} onChange={(e) => setSenha(e.target.value)} placeholder="senha" aria-describedby={loginErro ? 'login-erro' : undefined} />
-          {loginErro && <p id="login-erro" className="sub" style={{ color: 'var(--red)' }}>{loginErro}</p>}
-          <button onClick={fazerLogin}>Entrar</button>
+          {loginErro && <p id="login-erro" className="sub" style={{ color: 'var(--red)' }} role="alert" aria-live="polite">{loginErro}</p>}
+          <button onClick={fazerLogin} disabled={logando}>{logando ? 'Entrando…' : 'Entrar'}</button>
           <p className="sub" style={{ marginTop: 10 }}>Demo: admin/admin123 · viewer/view123</p>
         </div>
       </div>
