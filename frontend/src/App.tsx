@@ -29,7 +29,7 @@ function ToastItem({ n, onView, onClose }: { n: Notif; onView: () => void; onClo
       style={pos ? { position: 'fixed', left: pos.x, top: pos.y, width: pos.w, margin: 0, zIndex: 60 } : undefined}>
       <b style={{ cursor: 'move', touchAction: 'none', userSelect: 'none' }}
         onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp}
-        title="Arraste para mover">⠿ {n.titulo}</b>
+        aria-label="Arraste para mover">⠿ {n.titulo}</b>
       {n.corpo}
       <div className="actions">
         <button onClick={onView}>Ver campanha</button>
@@ -844,12 +844,14 @@ export default function App() {
     return (
       <div className="login-wrap">
         <div className="card login-card">
-          <div className="brand" style={{ marginBottom: 12 }}>{logo ? <img className="brand-logo" src={logo} alt="logo" /> : <div className="icon">📺</div>}<div><h1>CONTROLE DE LED</h1><span>PAINÉIS DE VEICULAÇÃO</span></div></div>
+          <div className="brand" style={{ marginBottom: 12 }}>{logo ? <img className="brand-logo" src={logo} alt="Marca Controle de LED" /> : <div className="icon" aria-hidden="true">📺</div>}<div><h1>CONTROLE DE LED</h1><span>PAINÉIS DE VEICULAÇÃO</span></div></div>
           <h2>Login</h2>
           <p className="sub">Fluxo §5 · perfis §9.2 (admin / regional / operador / visualizador)</p>
-          <input value={login} onChange={(e) => setLogin(e.target.value)} placeholder="login" />
-          <input type="password" value={senha} onChange={(e) => setSenha(e.target.value)} placeholder="senha" />
-          {loginErro && <p className="sub">{loginErro}</p>}
+          <label htmlFor="login-input">Login</label>
+          <input id="login-input" value={login} onChange={(e) => setLogin(e.target.value)} placeholder="login" aria-describedby={loginErro ? 'login-erro' : undefined} />
+          <label htmlFor="senha-input">Senha</label>
+          <input id="senha-input" type="password" value={senha} onChange={(e) => setSenha(e.target.value)} placeholder="senha" aria-describedby={loginErro ? 'login-erro' : undefined} />
+          {loginErro && <p id="login-erro" className="sub" style={{ color: 'var(--red)' }}>{loginErro}</p>}
           <button onClick={fazerLogin}>Entrar</button>
           <p className="sub" style={{ marginTop: 10 }}>Demo: admin/admin123 · viewer/view123</p>
         </div>
@@ -900,10 +902,10 @@ export default function App() {
           {perfil && <div className="pill" title="Perfil do usuário (spec §9.2)"><span style={{ marginRight: 6 }}>👤</span>{perfil}{isAdmin ? ' · admin' : ''}</div>}
           <div style={{ position: 'relative' }}>
             {can('notificacoes') && (
-              <div className="bell" onClick={() => setSino((v) => !v)}><span style={{ marginRight: 6 }}>🔔</span>Notificações{pendentes.length > 0 && <span className="count">{pendentes.length}</span>}</div>
+              <button className="bell" onClick={() => setSino((v) => !v)} aria-expanded={sino} aria-haspopup="true" aria-controls="notificacoes-panel"><span style={{ marginRight: 6 }} aria-hidden="true">🔔</span><span>Notificações</span>{pendentes.length > 0 && <span className="count">{pendentes.length}</span>}</button>
             )}
             {sino && can('notificacoes') && (
-              <div className="notif-panel">
+              <div className="notif-panel" id="notificacoes-panel" role="menu" aria-label="Central de notificações">
                 <h3>Central de notificações</h3>
                 {notifs.length === 0 && <div className="item">Nenhuma notificação.</div>}
                 {notifs.slice(0, 20).map((n) => (
@@ -925,7 +927,6 @@ export default function App() {
           </div>
           <button className="btn-sair" onClick={sair}>Sair</button>
         </div>
-
         <div className="breadcrumb">Todas as cidades <span>→</span> <b>{cidadeNome(cidade)}</b>{ledSel && (<><span>→</span> <b>{ledSel}</b></>)}</div>
 
         {tela === 'painel' && (
