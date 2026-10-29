@@ -1,0 +1,111 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-29T00:00:00Z",
+  "title": "Design System: SaasLeds LED Control",
+  "extensions": {
+    "colorMeta": {
+      "deep-ink": { "role": "neutral", "displayName": "Deep Ink", "canonical": "oklch(22% 0.005 240)", "tonalRamp": ["#050814", "#0b1224", "#131c36", "#1c2648", "#26325a", "#32406e", "#425286", "#5466a0"] },
+      "surface-slate": { "role": "neutral", "displayName": "Surface Slate", "canonical": "oklch(16% 0.008 240)", "tonalRamp": ["#091022", "#131b32", "#1d2746", "#28345c", "#344272", "#42528a", "#5466a4", "#687cbe"] },
+      "surface-deep": { "role": "neutral", "displayName": "Surface Deep", "canonical": "oklch(13% 0.006 240)", "tonalRamp": ["#070c1a", "#0f1730", "#192348", "#243060", "#303e78", "#3e4e90", "#4e62aa", "#6278c6"] },
+      "border-steel": { "role": "neutral", "displayName": "Border Steel", "canonical": "oklch(28% 0.01 240)", "tonalRamp": ["#131c30", "#232d4a", "#313e64", "#42507e", "#546498", "#687ab2", "#7c92cc", "#92aae6"] },
+      "near-white": { "role": "neutral", "displayName": "Near White", "canonical": "oklch(94% 0.003 240)", "tonalRamp": ["#d8dce8", "#eef1f8", "#f4f6fc", "#fafbfd", "#ffffff", "#ffffff", "#ffffff", "#ffffff"] },
+      "slate-gray": { "role": "neutral", "displayName": "Slate Gray", "canonical": "oklch(56% 0.02 240)", "tonalRamp": ["#44526c", "#5c6c8c", "#7688ac", "#92a6cc", "#b0c6de", "#d0e4ee", "#e8f2f6", "#f4fafc"] },
+      "aqua-mint": { "role": "primary", "displayName": "Aqua Mint", "canonical": "oklch(78% 0.22 168)", "tonalRamp": ["#0b4a3f", "#156a5c", "#208a79", "#2caa96", "#38d2b4", "#4ee2d0", "#78f0e8", "#a4f8f0"] },
+      "amber": { "role": "secondary", "displayName": "Amber", "canonical": "oklch(72% 0.18 52)", "tonalRamp": ["#6e3a0a", "#8a4c0e", "#a86012", "#c87616", "#ea943a", "#f6a860", "#fcc290", "#fedcc4"] },
+      "sky-blue": { "role": "secondary", "displayName": "Sky Blue", "canonical": "oklch(68% 0.16 252)", "tonalRamp": ["#123c7a", "#1e52a0", "#2c68c6", "#3a7eec", "#4f8ff7", "#6aa8f8", "#8ac2f9", "#acd4fa"] },
+      "lavender": { "role": "tertiary", "displayName": "Lavender", "canonical": "oklch(72% 0.14 272)", "tonalRamp": ["#36207a", "#4a30a0", "#6044c6", "#7858ec", "#8b7cf6", "#a498f8", "#beb6f9", "#d8d6fa"] },
+      "coral-red": { "role": "tertiary", "displayName": "Coral Red", "canonical": "oklch(68% 0.16 20)", "tonalRamp": ["#7a1a24", "#a0202e", "#c62838", "#ec3042", "#f0546a", "#f67888", "#fc9ea6", "#fec6cc"] }
+    },
+    "typographyMeta": {
+      "body": { "displayName": "Body", "purpose": "Default paragraph and table cell text." },
+      "display": { "displayName": "Display", "purpose": "Brand/product name in topbar and login card." },
+      "label": { "displayName": "Label", "purpose": "Field labels, KPI captions, table headers — uppercase small caps voice." }
+    },
+    "shadows": [
+      { "name": "toast", "value": "0 8px 24px rgba(0,0,0,0.35)", "purpose": "Structural overlay shadow for toasts." },
+      { "name": "notification-panel", "value": "0 12px 32px rgba(0,0,0,0.5)", "purpose": "Structural overlay shadow for the notification panel." }
+    ],
+    "motion": [
+      { "name": "ease-standard", "value": "ease-in-out", "purpose": "Default easing for the highlight flash animation." },
+      { "name": "flash-duration", "value": "1s", "purpose": "Duration of the destacada row flash animation." }
+    ],
+    "breakpoints": [
+      { "name": "tablet", "value": "980px" },
+      { "name": "mobile", "value": "560px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Aqua-mint filled action button used for primary actions (login, save, add campaign).",
+      "html": "<button class=\"ds-btn-primary\">Entrar</button>",
+      "css": ".ds-btn-primary { background: linear-gradient(135deg, var(--teal), var(--blue)); border: 0; border-radius: 8px; color: var(--bg); font-weight: 700; padding: 10px; cursor: pointer; } .ds-btn-primary:hover { filter: brightness(1.1); } .ds-btn-primary:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }"
+    },
+    {
+      "name": "Ghost Button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Surface-deep ghost button with a 1px Border Steel stroke; used for secondary toolbar actions.",
+      "html": "<button class=\"ds-btn-ghost\">Cancelar edição</button>",
+      "css": ".ds-btn-ghost { background: var(--panel2); border: 1px solid var(--border); border-radius: 6px; color: var(--text); padding: 3px 10px; font-size: 0.7rem; cursor: pointer; } .ds-btn-ghost:hover { border-color: var(--teal); color: var(--teal); } .ds-btn-ghost:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }"
+    },
+    {
+      "name": "Input Field",
+      "kind": "input",
+      "refersTo": "input-field",
+      "description": "Surface-deep text input/select with a 1px Border Steel stroke and 4–8px radius.",
+      "html": "<input class=\"ds-input\" type=\"text\" placeholder=\"login\" />",
+      "css": ".ds-input { background: var(--panel2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); padding: 7px 10px; font-size: 0.78rem; width: 100%; } .ds-input:focus { outline: none; border-color: var(--teal); }"
+    },
+    {
+      "name": "Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Surface Slate container card with a 1px Border Steel border and 16px radius; flat depth, no shadow.",
+      "html": "<div class=\"ds-card\"><h2 class=\"ds-card-title\">Título da seção</h2><p class=\"ds-card-sub\">Subtítulo de suporte</p><div class=\"ds-card-body\">Conteúdo</div></div>",
+      "css": ".ds-card { background: var(--panel); border: 1px solid var(--border); border-radius: 16px; padding: 22px; } .ds-card-title { margin: 0 0 4px; font-size: 1rem; letter-spacing: 0.02em; color: var(--text); } .ds-card-sub { margin: 0 0 18px; color: var(--muted); font-size: 0.78rem; } .ds-card-body { color: var(--text); font-size: 0.78rem; line-height: 1.4; }"
+    },
+    {
+      "name": "Topbar Navigation",
+      "kind": "nav",
+      "refersTo": "navigation",
+      "description": "Surface Deep topbar with 1px Border Steel, 14px radius, flex row with space-between; houses brand, KPIs, city select, and actions.",
+      "html": "<div class=\"ds-topbar\"><div class=\"ds-brand\"><div class=\"ds-brand-icon\">📺</div><div><h1 class=\"ds-brand-name\">CONTROLE DE LED</h1><span class=\"ds-brand-sub\">PAINÉIS DE VEICULAÇÃO</span></div></div><span class=\"ds-live\">● LIVE</span></div>",
+      "css": ".ds-topbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px; background: var(--panel2); border: 1px solid var(--border); border-radius: 14px; padding: 16px 22px; margin-bottom: 18px; } .ds-brand { display: flex; align-items: center; gap: 10px; } .ds-brand-icon { width: 38px; height: 38px; border-radius: 10px; background: linear-gradient(135deg, var(--teal), var(--blue)); display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; } .ds-brand-name { font-size: 1.05rem; margin: 0; letter-spacing: 0.03em; color: var(--text); } .ds-brand-sub { display: block; font-size: 0.68rem; color: var(--muted); letter-spacing: 0.08em; } .ds-live { background: rgba(45,212,191,0.12); color: var(--teal); border: 1px solid rgba(45,212,191,0.4); padding: 4px 12px; border-radius: 20px; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.05em; }"
+    },
+    {
+      "name": "Badge / Pill",
+      "kind": "chip",
+      "refersTo": "pill",
+      "description": "Inline-flex badge with 20px radius; live (aqua-mint) and status variants.",
+      "html": "<span class=\"ds-pill live\">● LIVE</span>",
+      "css": ".ds-pill { display: inline-flex; align-items: center; gap: 6px; border-radius: 20px; padding: 4px 12px; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.04em; } .ds-pill.live { background: rgba(45,212,191,0.12); color: var(--teal); border: 1px solid rgba(45,212,191,0.4); } .ds-pill.warn { background: rgba(245,148,58,0.12); color: var(--orange); border: 1px solid rgba(245,148,58,0.4); }"
+    },
+    {
+      "name": "Toast",
+      "kind": "custom",
+      "refersTo": "toast",
+      "description": "Fixed top-center structural overlay toast; Surface Deep with amber left accent, coral-red for error; shadow overlay.",
+      "html": "<div class=\"ds-toast\"><b>Título</b><div>Corpo da notificação</div></div>",
+      "css": ".ds-toast { position: fixed; top: 16px; left: 50%; transform: translateX(-50%); background: var(--panel); border: 1px solid var(--border); border-left: 4px solid var(--orange); border-radius: 10px; padding: 10px 14px; font-size: 0.76rem; color: var(--text); box-shadow: 0 8px 24px rgba(0,0,0,0.35); z-index: 10; max-width: calc(100vw - 32px); } .ds-toast.red { border-left-color: var(--red); } .ds-toast b { display: block; margin-bottom: 2px; }"
+    },
+    {
+      "name": "Status Segment",
+      "kind": "custom",
+      "refersTo": "segment",
+      "description": "LED gantt track segment chips: veic (aqua-mint), res (lavender), venc (surface), livre (dashed border).",
+      "html": "<div class=\"ds-seg veic\">VEICULANDO</div>",
+      "css": ".ds-seg { height: 100%; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 0.62rem; font-weight: 700; color: #0b1224; margin-right: 3px; padding: 0 6px; flex-shrink: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .ds-seg.veic { background: var(--teal); } .ds-seg.res { background: var(--purple); color: #fff; } .ds-seg.venc { background: #232c4e; border: 1px solid #3a4468; color: var(--muted); } .ds-seg.livre { background: transparent; border: 1px dashed #3a4468; color: var(--muted); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Signal Board",
+    "overview": "A clean, modern dispatch surface for scheduling LED campaigns across cities. The system reads like a signal board: dark, receding surfaces that let information — not chrome — carry the weight. Density is high but controlled: KPI strips, compact tables, and small badges sit close together within cards, while generous separation sits between major blocks so the screen never feels cramped. The philosophy is utilitarian precision dressed in a restrained dark aesthetic; color is reserved for signal (live, warn, error, status) and never used as decoration.",
+    "keyCharacteristics": ["Dark receding surfaces (deep-ink / surface-slate) with near-white text", "Color used only as signal: aqua-mint for live/active, amber for warn, coral-red for error", "Flat depth: panels separated by border-steel and tonal steps, no offset shadows", "Refined and restrained components: subtle borders, muted small labels, small caps", "Compact data density inside cards, generous space between sections"],
+    "rules": [{ "name": "The One Voice Rule", "body": "The primary accent (aqua-mint) covers ≤10% of any given screen. Its rarity is the point; never use it for decoration or background fields.", "section": "colors" }, { "name": "The Flat-By-Default Rule", "body": "Surfaces are flat at rest. Shadows appear only as a response to state (hover) or as structural overlays (toasts, notification panel); never as card depth.", "section": "elevation" }],
+    "dos": ["Do use aqua-mint (≤10% of screen) only for live/active signal.", "Do separate panels with 1px Border Steel and tonal steps rather than shadows.", "Do set labels in uppercase at 0.66rem, weight 700, tracking 0.05em."],
+    "donts": ["Don't add kicker/eyebrow labels above headings; the heading carries its own weight.", "Don't use gradient text or glass/blur decoration.", "Don't add offset (zero-blur) block shadows outside a neobrutalist world.", "Don't reassert token hex values in prose; the frontmatter is normative."]
+  }
+}

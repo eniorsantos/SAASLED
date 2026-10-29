@@ -78,6 +78,8 @@ export default function App() {
     setTimeout(() => painelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
   };
   const [destaque, setDestaque] = useState<string | null>(null);
+  const [onboarding, setOnboarding] = useState(() => localStorage.getItem('led_onboarding') !== '1');
+  const [editInline, setEditInline] = useState<{ id: string; campo: 'anunciante' | 'inicio' | 'fim'; valor: string } | null>(null);
   const extrairAnunciante = (n: Notif): string | null => {
     if (n.anunciante) return n.anunciante;
     const t = (n.corpo || '').replace(/^Reserva de /i, '');
@@ -245,9 +247,19 @@ export default function App() {
   };
   // Tipo de gráfico da distribuição por status
   const [tipoDist, setTipoDist] = useState<'rosca' | 'pizza' | 'barras'>('rosca');
-
   useEffect(() => { carregar(); const i = setInterval(carregar, 30000); return () => clearInterval(i); }, [carregar]);
 
+  const podeEditar = can('campanhas_editar');
+  // Atalhos de teclado: Ctrl+N nova campanha, Ctrl+S salvar, Escape cancelar/fechar
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'n' && podeEditar) { e.preventDefault(); abrirNovaCampanha(); }
+      if ((e.ctrlKey || e.metaKey) && e.key === 's' && editInline) { e.preventDefault(); salvarEditInline(); }
+      if (e.key === 'Escape') { if (editInline) setEditInline(null); if (modal) setModal(false); }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [podeEditar, editInline, modal]);
 
   // Gantt: um bloco por campanha COM NOME (veiculando, reservada e vencida) +
   // LIVRE completando — LED nunca parece vazio havendo campanhas
@@ -318,6 +330,7 @@ export default function App() {
       const r = await api.login(login, senha);
       localStorage.setItem('led_token', r.token); localStorage.setItem('led_perfil', r.perfil);
       setToken(r.token); setPerfil(r.perfil); setLoginErro(''); setDismissed([]); carregar();
+      if (localStorage.getItem('led_onboarding') !== '1') setOnboarding(true);
     }
     catch { setLoginErro('Login inválido — use admin/admin123 (demo). Entrando offline…'); setToken('offline'); }
   };
@@ -334,7 +347,19 @@ export default function App() {
       carregar();
     } catch (e: any) { alert(e.message); }
   };
-  const podeEditar = can('campanhas_editar');
+
+  const iniciarEditInline = (row: PlanilhaRow, campo: 'anunciante' | 'inicio' | 'fim') => {
+    setEditInline({ id: row.id!, campo, valor: row[campo] || '' });
+  };
+  const cancelarEditInline = () => setEditInline(null);
+  const salvarEditInline = async () => {
+    if (!editInline) return;
+    try {
+      await api.editarCampanha(editInline.id, { [editInline.campo]: editInline.valor });
+      setEditInline(null);
+      carregar();
+    } catch (e: any) { alert(e.message); }
+  };
 
   // Aplica a paleta nas variáveis CSS (painel, fontes, gráficos via corStatus)
   useEffect(() => {
@@ -868,14 +893,14 @@ export default function App() {
             </select> ▾
           </div>
           <div className="pill">📅 {dash.periodo}</div>
-          {can('leds') && <button className="pill" style={{ cursor: 'pointer' }} onClick={() => { setLedsMenu(true); setLedMsg(null); }} title="Cadastro de LEDs (8 espaços por painel)">📺 LEDs</button>}
-          {can('reservas') && <button className="pill" style={{ cursor: 'pointer' }} onClick={abrirReservasMenu} title="Cadastro de reservas (múltiplos períodos por campanha)">🗓️ Reservas</button>}
-          {tela === 'painel' && temConfig && <button className="pill" style={{ cursor: 'pointer' }} onClick={() => setTela('config')} title="Tela de configurações: acesso, cidades e cores">⚙️ Configuração</button>}
-          {tela === 'config' && <button className="pill" style={{ cursor: 'pointer' }} onClick={() => setTela('painel')} title="Voltar ao painel">← Voltar</button>}
-          {perfil && <div className="pill" title="Perfil do usuário (spec §9.2)">👤 {perfil}{isAdmin ? ' · admin' : ''}</div>}
+          {can('leds') && <button className="pill" style={{ cursor: 'pointer' }} onClick={() => { setLedsMenu(true); setLedMsg(null); }}><span style={{ marginRight: 6 }}>📺</span>Painéis de LED</button>}
+          {can('reservas') && <button className="pill" style={{ cursor: 'pointer' }} onClick={abrirReservasMenu}><span style={{ marginRight: 6 }}>🗓️</span>Reservas</button>}
+          {tela === 'painel' && temConfig && <button className="pill" style={{ cursor: 'pointer' }} onClick={() => setTela('config')}><span style={{ marginRight: 6 }}>⚙️</span>Configuração</button>}
+          {tela === 'config' && <button className="pill" style={{ cursor: 'pointer' }} onClick={() => setTela('painel')}><span style={{ marginRight: 6 }}>←</span>Voltar</button>}
+          {perfil && <div className="pill" title="Perfil do usuário (spec §9.2)"><span style={{ marginRight: 6 }}>👤</span>{perfil}{isAdmin ? ' · admin' : ''}</div>}
           <div style={{ position: 'relative' }}>
             {can('notificacoes') && (
-              <div className="bell" onClick={() => setSino((v) => !v)}>🔔{pendentes.length > 0 && <span className="count">{pendentes.length}</span>}</div>
+              <div className="bell" onClick={() => setSino((v) => !v)}><span style={{ marginRight: 6 }}>🔔</span>Notificações{pendentes.length > 0 && <span className="count">{pendentes.length}</span>}</div>
             )}
             {sino && can('notificacoes') && (
               <div className="notif-panel">
@@ -898,7 +923,7 @@ export default function App() {
               </div>
             )}
           </div>
-          <button className="pill" onClick={sair} style={{ cursor: 'pointer' }}>Sair</button>
+          <button className="btn-sair" onClick={sair}>Sair</button>
         </div>
 
         <div className="breadcrumb">Todas as cidades <span>→</span> <b>{cidadeNome(cidade)}</b>{ledSel && (<><span>→</span> <b>{ledSel}</b></>)}</div>
@@ -1082,7 +1107,15 @@ export default function App() {
                               onChange={() => r.id && alternarSelecao(r.id)} /></td>
                           )}
                           <td>{r.cidade}</td><td>{r.led}</td>
-                          <td><input defaultValue={r.anunciante} onBlur={(e) => salvarInline(r, 'anunciante', e.target.value)} /></td>
+                          <td>
+                            {editInline && editInline.id === r.id && editInline.campo === 'anunciante'
+                              ? (<div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                                  <input value={editInline.valor} onChange={(e) => setEditInline({ ...editInline!, valor: e.target.value })} />
+                                  <button onClick={salvarEditInline} style={{ padding: '2px 8px', fontSize: '.7rem' }}>Salvar</button>
+                                  <button onClick={cancelarEditInline} style={{ padding: '2px 8px', fontSize: '.7rem' }}>Cancelar</button>
+                                </div>)
+                              : (<input defaultValue={r.anunciante} onClick={() => iniciarEditInline(r, 'anunciante')} />)}
+                          </td>
                           <td>{br(r.inicio)}</td><td>{br(r.fim)}</td>
                           <td><span className="status-dot" style={{ background: corStatus(r.status) }} />{STATUS_ROTULO[r.status] || r.status}
                             {r.status === 'a_vencer' && r.fim !== '—' && (() => {
@@ -1497,6 +1530,24 @@ export default function App() {
             <div className="toolbar" style={{ marginTop: 10 }}>
               <button onClick={salvarEdicaoReserva}>Salvar alterações</button>
               <button className="ghost" onClick={() => setResEditM(null)}>Cancelar</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {onboarding && (
+        <div className="modal-bg" onClick={() => {}} style={{ background: 'rgba(0,0,0,.85)' }}>
+          <div className="card modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 520, textAlign: 'center' }}>
+            <h2 style={{ fontSize: '1.2rem', marginBottom: 8 }}>Bem-vindo ao Controle de LED</h2>
+            <p className="sub" style={{ marginBottom: 20 }}>Guia rápido para começar:</p>
+            <div style={{ textAlign: 'left', marginBottom: 20 }}>
+              <div style={{ marginBottom: 10, color: 'var(--text)' }}><b>1.</b> Veja os painéis no Gantt e clique em um para criar campanhas.</div>
+              <div style={{ marginBottom: 10, color: 'var(--text)' }}><b>2.</b> Use Planilha para editar anunciante, datas e status em lote.</div>
+              <div style={{ marginBottom: 10, color: 'var(--text)' }}><b>3.</b> Reservas criam períodos futuros com aviso de início próximo.</div>
+              <div style={{ marginBottom: 20, color: 'var(--text)' }}><b>4.</b> Atalhos: <code style={{ background: 'var(--panel2)', padding: '2px 6px', borderRadius: 4 }}>Ctrl+N</code> nova campanha · <code style={{ background: 'var(--panel2)', padding: '2px 6px', borderRadius: 4 }}>Ctrl+S</code> salvar · <code style={{ background: 'var(--panel2)', padding: '2px 6px', borderRadius: 4 }}>Esc</code> cancelar.</div>
+            </div>
+            <div className="toolbar" style={{ justifyContent: 'center', gap: 10 }}>
+              <button className="ghost" onClick={() => { setOnboarding(false); localStorage.setItem('led_onboarding', '1'); }}>Pular</button>
+              <button onClick={() => { setOnboarding(false); localStorage.setItem('led_onboarding', '1'); }}>Começar</button>
             </div>
           </div>
         </div>
